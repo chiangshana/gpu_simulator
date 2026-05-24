@@ -1,0 +1,43 @@
+{
+    "version": 1,
+    "gpu": {
+        "num_sms": 8,
+        "warps_per_sm": 4,
+        "threads_per_warp": 32,
+        "vram_capacity_mib": 256,
+        "shared_memory_per_sm_kib": 48,
+        "registers_per_thread": 64,
+        "event_log_size": 48
+    },
+    "widget": {
+        "tick_interval_ms": 100,
+        "kernels_per_tick": 4,
+        "window_width": 380,
+        "window_height": 560,
+        "background_alpha": 210
+    },
+    "event_listener": {
+        "mouse_move_throttle_seconds": 0.4,
+        "idle_threshold_seconds": 5.0,
+        "focus_poll_interval_seconds": 1.0,
+        "process_poll_interval_seconds": 2.0
+    },
+    "trigger_mapping": {
+        "mouse_click":  {"kernel": "vector_add"},
+        "mouse_move":   {"kernel": "interpolation"},
+        "key_press":    {"kernel": "hash"},
+        "focus_change": {"kernel": "texture_load"},
+        "page_nav":     {"kernel": "page_nav"},
+        "app_launch":   {"kernel": "app_launch"},
+        "idle":         {"kernel": "idle_compression"}
+    },
+    "persistence": {
+        "enabled": true,
+        "database_filename": "sessions.sqlite3"
+    },
+    "real_gpu": {
+        "enabled": false,
+        "preferred_backend": "auto",
+        "sample_interval_seconds": 1.0
+    }
+}
