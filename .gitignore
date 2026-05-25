@@ -6,3 +6,9 @@ __pycache__/
 venv/
 .env
 .DS_Store
+
+# PyInstaller 打包輸出 — 體積大,不該進 git
+build/
+dist/
+*.exe
+*.zip

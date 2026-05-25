@@ -2245,7 +2245,7 @@ class GPUVizWidget(QWidget):
             snap = self._gpu.snapshot()
             util_pct = float(snap.get("overall_utilization", 0.0)) * 100.0
         mode = "電影模式" if getattr(self, "_cinema_player", None) is not None else "即時"
-        fps = float(1000.0 / max(1, self._widget_config.refresh_ms))
+        fps = float(1000.0 / max(1, self._widget_config.tick_interval_ms))
         snapshot = StatusSnapshot(
             version=version,
             mode=mode,

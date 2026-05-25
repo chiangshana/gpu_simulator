@@ -979,3 +979,136 @@ SCREENSHOTS_GUIDE.md         # 三個 deadline 各自需要的畫面 checklist
 
 `SCREENSHOTS_GUIDE.md` 把三份截圖需求(demo / 報告 / 家庭)拆開列,
 按 checklist 拍完就可以直接交。
+
+---
+
+## 2026-05-24 · 第十五輪對齊:一鍵安裝(給組員用)
+
+### 第十五輪使用者要求
+
+> 「能不能直接幫我打包成一鍵安裝 這樣對每個人都方便」
+
+組員是 商管系學生,不一定會用 PowerShell。
+目標:**雙擊 `.bat` 檔就跑完**,不用打開終端機。
+
+### 兩條路徑的取捨
+
+| 方案 | 工作量 | 組員需要什麼 | 輸出 | 風險 |
+| ---- | ---- | ---- | ---- | ---- |
+| `.bat` / `.sh` 安裝腳本 | 30 分鐘 | 預裝 Python 3.10+ | 4 個小腳本 | 低 |
+| PyInstaller `.exe` 打包 | 1–2 小時(首次往往要排錯) | **完全不用 Python** | 150 MB 單檔 | 中:PySide6 + matplotlib + pynvml 都要手動 bundle |
+
+**選 `.bat`** — 99% 案例夠用,工作量小、可預測。PyInstaller 留作後續。
+
+### 第十五輪交付清單
+
+```text
+gpu_simulator/                        ← repo 根目錄(組員下載後就看到這些)
+├── 安裝.bat            # 一鍵安裝(自動 venv + pip install)
+├── 啟動.bat            # 雙擊一般啟動
+├── 錄影模式.bat        # 雙擊跑 60 秒 demo
+├── 硬體儀表板.bat      # 雙擊開到「💻 真實硬體」分頁
+├── install.sh          # Mac / Linux 版安裝
+└── start.sh            # Mac / Linux 版啟動(吃 --cinema / --monitor 等 arg)
+```
+
+### `.bat` 設計重點
+
+- 全部用 `chcp 65001` 確保中文 / emoji 正確顯示
+- 自動偵測 Python 是否存在;沒裝會 `start https://www.python.org/downloads/`
+  幫使用者開瀏覽器
+- 自動進入 .bat 所在資料夾(`cd /d "%~dp0"`),不管使用者從哪雙擊
+- 用 errorlevel 偵測每步是否成功,出錯時 pause 讓使用者看得到訊息
+- 啟動類的 .bat 會先檢查 .venv 是否存在,沒裝會引導使用者去跑安裝
+
+### 第十五輪待辦狀態
+
+- [x] CHANGELOG round 15 區段(本段)
+- [x] `安裝.bat` — Python 偵測 + venv + pip install
+- [x] `啟動.bat` — 一般模式
+- [x] `錄影模式.bat` — `--cinema` flag
+- [x] `硬體儀表板.bat` — `--monitor` flag
+- [x] `install.sh` + `start.sh` — Mac/Linux 版
+- [x] `組員使用指南.md` 更新 — 雙擊路徑變第一順位、命令列路徑退為進階
+- [x] 318 tests still passing, ruff 0 issues
+
+### 教學意義:對組員 / 對非技術使用者
+
+之前的安裝步驟對 商管系學生太陡:他們可能從沒打開過 PowerShell。
+現在的流程是:
+
+1. 從 GitHub 下載 ZIP → 解壓縮
+2. 雙擊 `安裝.bat`(看著它跑一分鐘)
+3. 雙擊 `啟動.bat`
+
+**完全沒打字、沒看到任何命令列**。
+讓專題的可及性從「會寫 Python 的人」拓寬到「會雙擊滑鼠的人」。
+
+---
+
+## 2026-05-24 · 第十六輪對齊:真正的「免 Python」一鍵 .exe
+
+### 第十六輪使用者要求
+
+> 「要」(同意把 .bat 路徑進階成 PyInstaller .exe 打包)
+
+讓組員從「需要先裝 Python」升級到「下載 .zip → 解壓 → 雙擊 .exe → 跑起來」,
+真正不需要任何前置條件。
+
+### 過程紀錄
+
+1. **準備 entry point** — `gpu_simulator_main.py`(repo 根目錄)直接 import
+   `gpu_simulator.cli.main`,讓 PyInstaller 有一個明確的 freeze 起點
+2. **寫 `gpu_simulator.spec`** —
+   - `collect_submodules("gpu_simulator")` 抓所有子模組(含 vendored tiny8_full)
+   - 顯式加 `matplotlib.backends.backend_qtagg` / `PySide6.QtSvg` 等 hidden imports
+   - 排除可選相依(pynvml / GPUtil / pyttsx3 / anthropic)減肥
+   - `console=False`:雙擊 .exe 不會跳黑色 console 視窗
+   - `--onedir` 而非 `--onefile`:啟動快、出錯好除錯
+3. **首次打包** — 7 萬行 PyInstaller log 後跑出 `dist/GPU-Simulator/`,8.4 MB .exe + 177 MB folder
+4. **首次測試** — `.exe --version` 印出 `0.10.0`(過);`.exe` 啟動 widget 印出 traceback:
+   `WidgetConfig 沒有 refresh_ms 屬性`(這是第十二輪埋的 bug,因為 smoke test 沒完整啟動 widget 抓不到)
+5. **修 bug** — `widget.py:2248` 改 `refresh_ms` → `tick_interval_ms`
+6. **重新打包** — 重跑 PyInstaller,`.exe`、`.exe --cinema`、`.exe --monitor` 三種模式都乾淨啟動
+
+### 第十六輪交付清單
+
+```text
+gpu_simulator/                        ← repo 根目錄
+├── gpu_simulator_main.py             # PyInstaller entry point
+├── gpu_simulator.spec                # PyInstaller spec(commit)
+├── 打包.bat                          # 一鍵打包(call pyinstaller)
+├── .gitignore                        # 新增 build/ dist/ *.exe *.zip
+└── (build/ dist/ 不進 git)
+```
+
+### 修掉的 bug
+
+- `widget.py:2248` — `self._widget_config.refresh_ms` 應為 `tick_interval_ms`
+  (從 PyInstaller 跑出的 traceback 抓到的;單元測試覆蓋不到 status bar refresh tick)
+
+### 第十六輪待辦狀態
+
+- [x] CHANGELOG round 16 區段(本段)
+- [x] `gpu_simulator_main.py` PyInstaller entry point
+- [x] `gpu_simulator.spec` config
+- [x] `打包.bat` 一鍵打包腳本
+- [x] `.gitignore` 加 build/ dist/ *.exe
+- [x] 修 widget.py refresh_ms bug
+- [x] 實際打包 + 三種啟動模式測試通過
+- [x] `組員使用指南.md` 加「最簡單路徑:下載 .exe」段落
+- [x] 318 tests passing, ruff 0 issues
+
+### 教學意義:可及性的最後一哩路
+
+組員 / 觀眾現在有 **3 層難度** 可選:
+
+| 難度 | 步驟 | 適合誰 |
+| ---- | ---- | ---- |
+| 🏆 最簡單 | 下載 .zip → 解壓 → 雙擊 .exe | 完全不會程式的人,連 Python 都不裝 |
+| 🚀 中等 | 下載 repo → 雙擊 安裝.bat → 雙擊 啟動.bat | 有 Python,不會 PowerShell |
+| 🛠️ 進階 | `git clone` → `python -m venv .venv` → `pip install -e .` → `gpu-simulator` | 一般開發者 |
+
+打包流程本身(`打包.bat`)讓 Shana 之後改完程式碼後,**雙擊一次就能重出新版 .exe**
+上傳到 GitHub Releases。從程式碼到可分發產品的距離從以前的「先教組員裝 Python」變成
+「上傳一個 .zip」。
