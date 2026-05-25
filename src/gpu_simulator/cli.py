@@ -241,11 +241,29 @@ def main(argv: list[str] | None = None) -> int:
     config = _apply_cli_overrides(config, args)
 
     # Imported lazily so ``--version`` / ``--help`` do not require a display.
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import QApplication, QMessageBox
 
+    from gpu_simulator.single_instance import try_acquire_lock
     from gpu_simulator.widget import GPUVizWidget, WidgetConfig, _widget_config_from_app_config
 
     app = QApplication.instance() or QApplication(sys.argv)
+
+    # 單實例保護:確保整台機器最多只有一份 widget 跑著,
+    # 不然多份半透明 frameless widget 會疊在桌面上,使用者點不到任何一個。
+    instance_lock = try_acquire_lock()
+    if instance_lock is None:
+        QMessageBox.information(
+            None,
+            "GPU Simulator 已經在執行",
+            "GPU Simulator 已經有一份在跑了。\n\n"
+            "請從桌面找出已開啟的 widget(它在某個角落,半透明、永遠置頂),\n"
+            "或從工作管理員 (Ctrl+Shift+Esc) 結束舊的 instance 後再重啟。",
+        )
+        return 0
+    # 把 lock socket 掛在 app 物件上避免被 GC,
+    # process 結束時 OS 會自動釋放 port。
+    app._gpu_simulator_instance_lock = instance_lock  # type: ignore[attr-defined]
+
     widget_config: WidgetConfig = _widget_config_from_app_config(config)
     for key, value in _build_widget_overrides(args).items():
         setattr(widget_config, key, value)
