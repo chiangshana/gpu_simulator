@@ -1112,3 +1112,66 @@ gpu_simulator/                        ← repo 根目錄
 打包流程本身(`打包.bat`)讓 Shana 之後改完程式碼後,**雙擊一次就能重出新版 .exe**
 上傳到 GitHub Releases。從程式碼到可分發產品的距離從以前的「先教組員裝 Python」變成
 「上傳一個 .zip」。
+
+---
+
+## 2026-05-24 · 第十七輪對齊:從 onedir 改成 --onefile 單一檔
+
+### 第十七輪使用者要求
+
+> 「不行 你打包成單一安裝檔 exe」
+
+第十六輪輸出的是 onedir(177 MB 資料夾 + 一個 8.4 MB .exe),要組員下載整個 zip
+解壓 → 雙擊。使用者要更直接的:**單一檔案,下載一個 .exe,雙擊**。
+
+### 兩種模式對比
+
+| 項目 | --onedir(R16) | **--onefile(R17 新)** |
+| ---- | ---- | ---- |
+| 輸出檔案 | `dist/GPU-Simulator/` 整個資料夾 | `dist/GPU-Simulator.exe` 單檔 |
+| 總大小 | 177 MB(資料夾) | **75 MB**(自動 dedupe + 內部壓縮) |
+| 首次啟動 | 2–3 秒 | **5–10 秒**(內部解壓到 %TEMP%) |
+| 第二次同 boot 啟動 | 2–3 秒 | 2–3 秒(快取在 %TEMP%) |
+| 分發 | 整個資料夾要 zip | **直接傳一個 .exe 給組員** |
+| GitHub Release | 上傳 .zip | **上傳 .exe** |
+
+對組員體驗來說 onefile 顯著勝出:沒有「解壓」這個步驟、沒有「.exe 在哪個資料夾」的混淆。
+
+### `gpu_simulator.spec` 改動
+
+```diff
+ exe = EXE(
+     pyz,
+     a.scripts,
++    a.binaries,        # binaries 直接塞進 .exe
++    a.datas,           # datas 直接塞進 .exe
+     [],
+-    exclude_binaries=True,
+     name="GPU-Simulator",
++    runtime_tmpdir=None,
+     ...
+ )
+-coll = COLLECT(exe, a.binaries, a.datas, ...)  # 移除
+```
+
+### 第十七輪驗證
+
+```text
+$ ./dist/GPU-Simulator.exe --version
+0.10.0
+
+$ ls -lh dist/
+total 75M
+-rwxr-xr-x ... 75M ... GPU-Simulator.exe
+```
+
+單一 75 MB 檔案,`--version` 1.9 秒回覆。
+
+### 第十七輪待辦狀態
+
+- [x] CHANGELOG round 17 區段(本段)
+- [x] `gpu_simulator.spec` 改 --onefile
+- [x] 重新打包驗證
+- [x] `打包.bat` 更新訊息(75 MB 單檔)
+- [x] `組員使用指南.md` 更新 — 不再需要解壓、加 SmartScreen 提示
+- [x] 318 tests still passing, ruff 0 issues
