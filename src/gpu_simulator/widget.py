@@ -151,8 +151,8 @@ class WidgetConfig:
 
     tick_interval_ms: int = 100
     kernels_per_tick: int = 4
-    window_width: int = 380
-    window_height: int = 600
+    window_width: int = 720
+    window_height: int = 640
     background_alpha: int = 210
     snapshot_record_every: int = 5  # persist one snapshot every N ticks
     asm_max_cycles: int = 5000
@@ -691,29 +691,37 @@ class GPUVizWidget(QWidget):
             self._tabs.addTab(live_tab, t("tab.live"))
             self._tabs.addTab(self._demo_tab, t("tab.demo"))
         else:
-            # 第一眼就是專題論述 — 模擬 GPU vs 真實 CPU 並排
-            self._tabs.addTab(mirror_tab, "🪞 對照鏡")
-            # 支柱 ① 教學核心
-            self._tabs.addTab(cpu_state_heatmap_tab, "🌡️ 狀態熱圖")
-            # 支柱 ③ 真實硬體
-            self._tabs.addTab(real_hw_tab, "💻 真實硬體")
-            # 支柱 ① 延伸 — 即時模擬 / Cycle Cinema / 完整 Tiny8
-            self._tabs.addTab(live_tab, t("tab.live"))
-            self._tabs.addTab(cinema_tab, "🎬 Cycle Cinema")
-            self._tabs.addTab(full_tab, "🧬 Tiny8 完整版")
-            self._tabs.addTab(input_tab, t("tab.input"))
+            # 分頁標題改用「emoji + 2-3 字」壓縮版,讓 16 顆分頁在 720px 寬下能全顯示;
+            # 完整中文敘述放 tooltip。
+            def add_tab(widget, short_label: str, tooltip: str) -> None:
+                idx = self._tabs.addTab(widget, short_label)
+                self._tabs.setTabToolTip(idx, tooltip)
+
+            # 三大支柱優先
+            add_tab(mirror_tab, "🪞 對照", "🪞 對照鏡 — 模擬 GPU 8 SM vs 真實 CPU N 核並排")
+            add_tab(
+                cpu_state_heatmap_tab,
+                "🌡️ 熱圖",
+                "🌡️ 狀態熱圖 — Tiny8 ASM 跑完後三層 SREG/R0–R31/mem heatmap",
+            )
+            add_tab(real_hw_tab, "💻 硬體", "💻 真實硬體 — 你電腦多核 CPU + NVIDIA GPU 即時負載")
+            # 支柱 ① 延伸
+            add_tab(live_tab, "⚡ 即時", "⚡ 即時模擬 — SM 熱圖 / VRAM / pipeline / event log")
+            add_tab(cinema_tab, "🎬 Cinema", "🎬 Cycle Cinema — CPU 跟 GPU 同框慢動作")
+            add_tab(full_tab, "🧬 Tiny8", "🧬 Tiny8 完整版 — 60+ 指令完整 ISA")
+            add_tab(input_tab, "⌨️ ASM", "⌨️ ASM 編輯器 — Tiny8 子集 ISA")
             # 細部除錯 / 視覺化
-            self._tabs.addTab(trace_tab, t("tab.trace"))
-            self._tabs.addTab(debug_tab, t("tab.debug"))
-            self._tabs.addTab(heatmap_tab, t("tab.heatmap"))
-            self._tabs.addTab(sequence_tab, "🔁 時序圖")
-            self._tabs.addTab(memory_map_tab, "🗺️ 記憶體")
-            self._tabs.addTab(gpu_3d_tab, "🏗️ 3D 視圖")
-            # 進階主題 / 加分功能
-            self._tabs.addTab(divergence_tab, "🧠 進階 GPU")
-            self._tabs.addTab(life_tab, "🎮 遊戲機")
-            self._tabs.addTab(analytics_tab, t("tab.analytics"))
-            self._tabs.addTab(history_tab, t("tab.history"))
+            add_tab(trace_tab, "📜 Trace", "📜 Cycle Trace — 逐 cycle 表格 + 中文導讀")
+            add_tab(debug_tab, "🐞 Debug", "🐞 Tiny8 風格 debugger — 暫存器格 + 記憶體格")
+            add_tab(heatmap_tab, "📊 演化", "📊 暫存器/記憶體熱圖 — matplotlib 隨 step 演化")
+            add_tab(sequence_tab, "🔁 時序", "🔁 時序圖 — UML 風 CPU/GPU 兩條 lane")
+            add_tab(memory_map_tab, "🗺️ 記憶", "🗺️ 記憶體地圖 — 256 byte 全圖")
+            add_tab(gpu_3d_tab, "🏗️ 3D", "🏗️ 3D 等距 GPU 視圖")
+            # 進階主題
+            add_tab(divergence_tab, "🧠 進階", "🧠 進階 GPU — Warp 發散 + Memory coalescing")
+            add_tab(life_tab, "🎮 遊戲", "🎮 ASM 遊戲機 — Conway's Life 跑在 Tiny8")
+            add_tab(analytics_tab, "📈 分析", "📈 利用率 + VRAM 時序曲線")
+            add_tab(history_tab, "📚 歷史", "📚 過去 session 回放與匯出")
 
         # real GPU panel (shown only when a backend was initialised)
         self._real_gpu_panel = RealGPUPanel(self)
@@ -854,8 +862,20 @@ class GPUVizWidget(QWidget):
 
     @staticmethod
     def _create_action_button(label: str, tooltip: str, on_click) -> QPushButton:
-        button = QPushButton(label)
-        button.setToolTip(tooltip)
+        """工具列按鈕 — 為了讓 13 顆按鈕在 720px 視窗排得下,只顯示 emoji,
+        中文標籤跟說明都塞進 tooltip。
+
+        ``label`` 的慣例是 ``"🎓 教學課程"``:第一個空白前是 emoji,後面是中文。
+        """
+        parts = label.split(" ", 1)
+        if len(parts) == 2 and parts[0]:
+            icon, text_part = parts[0], parts[1]
+            full_tooltip = f"{text_part}\n\n{tooltip}" if tooltip else text_part
+        else:
+            icon, full_tooltip = label, tooltip
+        button = QPushButton(icon)
+        button.setToolTip(full_tooltip)
+        button.setFixedSize(32, 24)
         button.setStyleSheet(
             """
             QPushButton {
@@ -863,8 +883,8 @@ class GPUVizWidget(QWidget):
                 color: rgb(220, 224, 236);
                 border: 1px solid rgba(120, 180, 255, 100);
                 border-radius: 4px;
-                padding: 3px 9px;
-                font-size: 10px;
+                padding: 0px;
+                font-size: 13px;
             }
             QPushButton:hover { background: rgba(90, 120, 170, 240); }
             QPushButton:pressed { background: rgba(120, 160, 220, 240); }
@@ -903,19 +923,31 @@ class GPUVizWidget(QWidget):
     # drag-to-move
     # ------------------------------------------------------------------
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        # 只有「點到沒有 child widget 的純背景區」才當作要拖曳整個視窗。
+        # 否則直接讓 child(tab bar、按鈕、輸入框…)收事件,避免 frameless widget
+        # 的 drag handler 把使用者的點擊吞掉造成「分頁切不過去」。
         if event.button() == Qt.LeftButton:
-            self._drag_offset = (
-                event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+            click_pos = (
+                event.position().toPoint() if hasattr(event, "position") else event.pos()
             )
-            event.accept()
+            if self.childAt(click_pos) is None:
+                self._drag_offset = (
+                    event.globalPosition().toPoint() - self.frameGeometry().topLeft()
+                )
+                event.accept()
+                return
+        super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         if self._drag_offset is not None and event.buttons() & Qt.LeftButton:
             self.move(event.globalPosition().toPoint() - self._drag_offset)
             event.accept()
+            return
+        super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         self._drag_offset = None
+        super().mouseReleaseEvent(event)
 
     # ------------------------------------------------------------------
     # simulation & listener loops

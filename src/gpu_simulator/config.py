@@ -64,8 +64,8 @@ class GPUSection:
 class WidgetSection:
     tick_interval_ms: int = 100
     kernels_per_tick: int = 4
-    window_width: int = 380
-    window_height: int = 560
+    window_width: int = 720
+    window_height: int = 640
     background_alpha: int = 210
 
 
