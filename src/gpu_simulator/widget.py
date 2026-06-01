@@ -796,27 +796,16 @@ class GPUVizWidget(QWidget):
                 "🏗️ 3D",
                 "🏗️ 3D 立體 GPU 視圖 — 8 顆運算單元(SM)畫成等距高塔,越高代表越忙",
             )
-            # 進階主題
+            # 進階主題(最後一個,後面三個 [遊戲 / 趨勢 / 歷史]
+            # 在第 22 輪砍掉以精簡介面 — 程式碼還在,以後想恢復把它們加回 add_tab 即可)
             add_tab(
                 divergence_tab,
                 "🧠 進階",
                 "🧠 進階 GPU 概念 — 平行小組(warp)分歧、記憶體合併存取",
             )
-            add_tab(
-                life_tab,
-                "🎮 遊戲",
-                "🎮 ASM 遊戲機 — 生命遊戲(Conway's Life)真的在 Tiny8 + GPU 上跑",
-            )
-            add_tab(
-                analytics_tab,
-                "📈 趨勢",
-                "📈 趨勢圖 — GPU 多忙、用了多少記憶體,隨時間怎麼變動",
-            )
-            add_tab(
-                history_tab,
-                "📚 歷史",
-                "📚 過去的執行紀錄 — 可以重看或匯出成表格/報告/圖片",
-            )
+            # 已砍:🎮 遊戲(Conway's Life)/ 📈 趨勢(Analytics)/ 📚 歷史(Session history)
+            # 對應的 widget instance 仍在記憶體中以避免影響其他模組,
+            # 但不會出現在分頁列上。
 
         # real GPU panel (shown only when a backend was initialised)
         self._real_gpu_panel = RealGPUPanel(self)
