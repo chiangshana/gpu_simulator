@@ -147,7 +147,8 @@ def build_mirror_dashboard(
 
     header = QLabel(
         "🪞 <b>對照鏡 — 模擬 GPU vs 真實電腦</b>"
-        "  ·  左邊是這個專案模擬出來的 8 顆 SM,右邊是你電腦真實的 CPU 核心。"
+        "  ·  左邊是這個專案模擬出來的 8 個運算單元(SM,GPU 的計算核心),"
+        "右邊是你電腦真實的每一顆 CPU 核心。"
     )
     header.setStyleSheet("color: rgba(220,230,240,240); font-size: 11pt;")
     header.setWordWrap(True)
@@ -162,7 +163,7 @@ def build_mirror_dashboard(
         "QFrame { background: rgba(28,22,40,210); border-radius: 8px; padding: 6px; }"
     )
     left_layout = QVBoxLayout(left)
-    left_title = QLabel("🎮 <b>模擬 GPU</b>(這個專題建的)", left)
+    left_title = QLabel("🎮 <b>模擬 GPU</b>(這個專題寫程式做出來的)", left)
     left_title.setStyleSheet("color: rgba(200,180,250,240); font-size: 11pt;")
     left_layout.addWidget(left_title)
     left_summary = QLabel("(讀取中…)", left)
@@ -204,7 +205,7 @@ def build_mirror_dashboard(
         "QFrame { background: rgba(20,22,28,210); border-radius: 8px; padding: 6px; }"
     )
     bottom_layout = QVBoxLayout(bottom_frame)
-    gpu_title = QLabel("🎮 真實 GPU(NVIDIA 用戶才有)", bottom_frame)
+    gpu_title = QLabel("🎮 真實 GPU(只有 NVIDIA 顯卡用戶看得到)", bottom_frame)
     gpu_title.setStyleSheet("color: rgba(240,220,140,240); font-size: 10pt;")
     bottom_layout.addWidget(gpu_title)
     gpu_text = QLabel("(讀取中…)", bottom_frame)
@@ -220,7 +221,7 @@ def build_mirror_dashboard(
 
     # 按鈕列
     button_row = QHBoxLayout()
-    trigger_btn = QPushButton("▶️ 觸發模擬工作負載(只動左邊)", box)
+    trigger_btn = QPushButton("▶️ 派工作給模擬 GPU(看左邊跳起來,右邊真實 CPU 不會動)", box)
     trigger_btn.setStyleSheet(
         "QPushButton { background: rgba(80,100,180,220); color: white; "
         "border-radius: 6px; padding: 6px 14px; font-size: 10pt; } "
@@ -303,7 +304,7 @@ def build_mirror_dashboard(
         diff = divergence_score(snap)
         divergence_label.setText(
             f"差距分數:{diff:.0f} / 100  "
-            f"(0 = 兩邊負載一樣;按上面那顆按鈕你會看到差距瞬間飆高)"
+            f"(0 = 兩邊一樣忙;按上面那顆藍色按鈕就會看到差距瞬間飆高)"
         )
 
     timer = QTimer(box)

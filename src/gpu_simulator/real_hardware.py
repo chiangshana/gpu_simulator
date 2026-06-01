@@ -185,7 +185,9 @@ def build_real_hardware_panel(parent=None):
     layout.setContentsMargins(10, 10, 10, 10)
     layout.setSpacing(8)
 
-    title = QLabel("💻 <b>真實硬體即時監測</b> — 你電腦的多核 CPU + 真實 GPU 現在在幹嘛")
+    title = QLabel(
+        "💻 <b>真實硬體即時監測</b> — 你電腦每一顆 CPU 核心 + 真實顯卡(GPU)現在在做什麼"
+    )
     title.setStyleSheet("color: rgba(220,230,240,240); font-size: 11pt;")
     layout.addWidget(title)
 
@@ -213,10 +215,10 @@ def build_real_hardware_panel(parent=None):
         "QFrame { background: rgba(20,22,28,200); border-radius: 6px; padding: 6px; }"
     )
     gpu_layout = QVBoxLayout(gpu_frame)
-    gpu_title = QLabel("🎮 真實 GPU", gpu_frame)
+    gpu_title = QLabel("🎮 真實顯卡(GPU)", gpu_frame)
     gpu_title.setStyleSheet("color: rgba(240,220,140,240); font-size: 11pt;")
     gpu_layout.addWidget(gpu_title)
-    gpu_summary = QLabel("(讀取中或無 NVIDIA GPU)", gpu_frame)
+    gpu_summary = QLabel("(讀取中,或你沒有 NVIDIA 顯卡)", gpu_frame)
     gpu_summary.setStyleSheet("color: rgba(220,220,230,235); font-family: monospace; font-size: 10pt;")
     gpu_summary.setWordWrap(True)
     gpu_layout.addWidget(gpu_summary)
@@ -261,9 +263,9 @@ def build_real_hardware_panel(parent=None):
                 gpu_summary.setText("(取樣失敗,稍後重試…)")
             else:
                 gpu_summary.setText(
-                    "未偵測到支援的 GPU 後端。\n"
-                    "NVIDIA 用戶可 `pip install gpu_simulator[realgpu]` 啟用 pynvml + GPUtil。\n"
-                    "(其他廠牌目前用模擬 GPU 體驗即可)"
+                    "沒偵測到支援的顯卡(只支援 NVIDIA)。\n"
+                    "如果你是 NVIDIA 用戶,執行:pip install gpu_simulator[realgpu]\n"
+                    "(AMD / Intel / Apple Silicon 用戶就用左邊模擬 GPU 體驗即可)"
                 )
         else:
             mem_used_mb = (gpu.memory_used_bytes or 0) / 1024 / 1024

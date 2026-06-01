@@ -241,10 +241,20 @@ def main(argv: list[str] | None = None) -> int:
     config = _apply_cli_overrides(config, args)
 
     # Imported lazily so ``--version`` / ``--help`` do not require a display.
+    from PySide6.QtCore import Qt
     from PySide6.QtWidgets import QApplication, QMessageBox
 
     from gpu_simulator.single_instance import try_acquire_lock
     from gpu_simulator.widget import GPUVizWidget, WidgetConfig, _widget_config_from_app_config
+
+    # 在 QApplication 建立之前,把高 DPI 屬性打開 —— 否則在 4K / 高 DPI 螢幕
+    # 上,Qt 預設會把視窗畫得太小(看起來像縮圖)或座標錯位導致點不到。
+    # PySide6 ≥ 6 預設啟用 AA_EnableHighDpiScaling,但顯式打開比較安全。
+    for attr_name in ("AA_EnableHighDpiScaling", "AA_UseHighDpiPixmaps"):
+        attr = getattr(Qt, attr_name, None)
+        if attr is not None:
+            with contextlib.suppress(Exception):
+                QApplication.setAttribute(attr, True)
 
     app = QApplication.instance() or QApplication(sys.argv)
 

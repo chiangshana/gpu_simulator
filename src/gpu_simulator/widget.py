@@ -22,7 +22,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from PySide6.QtCore import QPoint, Qt, QTimer
-from PySide6.QtGui import QColor, QKeySequence, QMouseEvent, QPainter, QShortcut
+from PySide6.QtGui import QColor, QKeySequence, QMouseEvent, QShortcut
 from PySide6.QtWidgets import (
     QApplication,
     QHBoxLayout,
@@ -371,15 +371,33 @@ class GPUVizWidget(QWidget):
     # layout
     # ------------------------------------------------------------------
     def _setup_window_flags(self) -> None:
-        self.setWindowFlags(
-            Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
-        )
-        self.setAttribute(Qt.WA_TranslucentBackground, True)
-        self.setFixedSize(
+        # 從第 20 輪開始改成「標準視窗」 —— 有標題列、X 鈕、在 taskbar 看得到、
+        # 不透明。原本的 frameless + transparent + Tool 三招組合在很多使用者環境
+        # 會出現「視窗存在但點不到」的詭異 bug,捨棄炫炮、保住可用性。
+        self.setWindowTitle("GPU 模擬器 — CPU↔GPU 視覺化教學工具")
+        # 用「最小尺寸」而不是「固定尺寸」,讓使用者可以拉大、自由縮放
+        self.setMinimumSize(
             self._widget_config.window_width,
             self._widget_config.window_height,
         )
-        self.setWindowTitle("GPU Simulator")
+        # 啟動後置中到當前螢幕,避免在多螢幕環境跑到看不到的地方
+        self._center_on_screen()
+
+    def _center_on_screen(self) -> None:
+        """把視窗移到當前螢幕的中央。"""
+        try:
+            from PySide6.QtGui import QGuiApplication
+
+            screen = QGuiApplication.primaryScreen()
+            if screen is None:
+                return
+            geom = screen.availableGeometry()
+            x = geom.x() + (geom.width() - self.width()) // 2
+            y = geom.y() + (geom.height() - self.height()) // 2
+            # 確保不會跑到負座標
+            self.move(max(geom.x(), x), max(geom.y(), y))
+        except Exception:
+            pass
 
     def _build_layout(self) -> None:
         # shared live-mode widgets
@@ -697,31 +715,100 @@ class GPUVizWidget(QWidget):
                 idx = self._tabs.addTab(widget, short_label)
                 self._tabs.setTabToolTip(idx, tooltip)
 
-            # 三大支柱優先
-            add_tab(mirror_tab, "🪞 對照", "🪞 對照鏡 — 模擬 GPU 8 SM vs 真實 CPU N 核並排")
+            # 三大支柱優先 — 全部使用「白話 + 括號標技術詞」風格
+            add_tab(
+                mirror_tab,
+                "🪞 對照",
+                "🪞 對照鏡 — 左邊我模擬的 GPU 8 個運算單元(SM)、"
+                "右邊你電腦真實的 CPU 核心,並排比較",
+            )
             add_tab(
                 cpu_state_heatmap_tab,
-                "🌡️ 熱圖",
-                "🌡️ 狀態熱圖 — Tiny8 ASM 跑完後三層 SREG/R0–R31/mem heatmap",
+                "🌡️ 變化",
+                "🌡️ 狀態變化圖 — 跑一段程式,看 CPU 內部小格子(暫存器)跟"
+                "記憶體每一拍(cycle)的變化色塊圖",
             )
-            add_tab(real_hw_tab, "💻 硬體", "💻 真實硬體 — 你電腦多核 CPU + NVIDIA GPU 即時負載")
+            add_tab(
+                real_hw_tab,
+                "💻 硬體",
+                "💻 真實硬體 — 你電腦每顆 CPU 核心的忙碌程度 + 真實 GPU 狀態",
+            )
             # 支柱 ① 延伸
-            add_tab(live_tab, "⚡ 即時", "⚡ 即時模擬 — SM 熱圖 / VRAM / pipeline / event log")
-            add_tab(cinema_tab, "🎬 Cinema", "🎬 Cycle Cinema — CPU 跟 GPU 同框慢動作")
-            add_tab(full_tab, "🧬 Tiny8", "🧬 Tiny8 完整版 — 60+ 指令完整 ISA")
-            add_tab(input_tab, "⌨️ ASM", "⌨️ ASM 編輯器 — Tiny8 子集 ISA")
+            add_tab(
+                live_tab,
+                "⚡ 即時",
+                "⚡ 即時模擬 — 動滑鼠鍵盤會觸發 GPU 工作,"
+                "看下面 8 顆運算單元(SM)、GPU 記憶體(VRAM)、流水線(pipeline)反應",
+            )
+            add_tab(
+                cinema_tab,
+                "🎬 Cinema",
+                "🎬 慢動作劇場 — CPU 跟 GPU 並排播放,每一拍都看得到誰在做什麼",
+            )
+            add_tab(
+                full_tab,
+                "🧬 完整 CPU",
+                "🧬 Tiny8 完整版 — 內嵌真正的 Tiny8 CPU,支援 60+ 條指令",
+            )
+            add_tab(
+                input_tab,
+                "⌨️ 寫程式",
+                "⌨️ 程式編輯器 — 在這裡寫組合語言(ASM)指令,按執行就會跑",
+            )
             # 細部除錯 / 視覺化
-            add_tab(trace_tab, "📜 Trace", "📜 Cycle Trace — 逐 cycle 表格 + 中文導讀")
-            add_tab(debug_tab, "🐞 Debug", "🐞 Tiny8 風格 debugger — 暫存器格 + 記憶體格")
-            add_tab(heatmap_tab, "📊 演化", "📊 暫存器/記憶體熱圖 — matplotlib 隨 step 演化")
-            add_tab(sequence_tab, "🔁 時序", "🔁 時序圖 — UML 風 CPU/GPU 兩條 lane")
-            add_tab(memory_map_tab, "🗺️ 記憶", "🗺️ 記憶體地圖 — 256 byte 全圖")
-            add_tab(gpu_3d_tab, "🏗️ 3D", "🏗️ 3D 等距 GPU 視圖")
+            add_tab(
+                trace_tab,
+                "📜 逐拍",
+                "📜 逐拍紀錄表 — 每一拍(cycle)一列,有變動的格子會亮起來;"
+                "點任一列可以時光旅行到那一拍",
+            )
+            add_tab(
+                debug_tab,
+                "🐞 內部",
+                "🐞 CPU 內部觀察 — 32 個小格子(暫存器)+ 記憶體格子,黃色 = 剛變動",
+            )
+            add_tab(
+                heatmap_tab,
+                "📊 演化",
+                "📊 暫存器/記憶體 隨時間演化色塊圖",
+            )
+            add_tab(
+                sequence_tab,
+                "🔁 對話",
+                "🔁 時序對話圖 — CPU 跟 GPU 兩條時間線,看誰先說什麼、誰回什麼",
+            )
+            add_tab(
+                memory_map_tab,
+                "🗺️ 記憶",
+                "🗺️ 記憶體地圖 — 256 個格子全攤開,"
+                "標出哪幾格是給 GPU 看的「電鈴位置」",
+            )
+            add_tab(
+                gpu_3d_tab,
+                "🏗️ 3D",
+                "🏗️ 3D 立體 GPU 視圖 — 8 顆運算單元(SM)畫成等距高塔,越高代表越忙",
+            )
             # 進階主題
-            add_tab(divergence_tab, "🧠 進階", "🧠 進階 GPU — Warp 發散 + Memory coalescing")
-            add_tab(life_tab, "🎮 遊戲", "🎮 ASM 遊戲機 — Conway's Life 跑在 Tiny8")
-            add_tab(analytics_tab, "📈 分析", "📈 利用率 + VRAM 時序曲線")
-            add_tab(history_tab, "📚 歷史", "📚 過去 session 回放與匯出")
+            add_tab(
+                divergence_tab,
+                "🧠 進階",
+                "🧠 進階 GPU 概念 — 平行小組(warp)分歧、記憶體合併存取",
+            )
+            add_tab(
+                life_tab,
+                "🎮 遊戲",
+                "🎮 ASM 遊戲機 — 生命遊戲(Conway's Life)真的在 Tiny8 + GPU 上跑",
+            )
+            add_tab(
+                analytics_tab,
+                "📈 趨勢",
+                "📈 趨勢圖 — GPU 多忙、用了多少記憶體,隨時間怎麼變動",
+            )
+            add_tab(
+                history_tab,
+                "📚 歷史",
+                "📚 過去的執行紀錄 — 可以重看或匯出成表格/報告/圖片",
+            )
 
         # real GPU panel (shown only when a backend was initialised)
         self._real_gpu_panel = RealGPUPanel(self)
@@ -910,17 +997,15 @@ class GPUVizWidget(QWidget):
         self._trace_table.row_selected.connect(self._on_trace_row_selected)
 
     # ------------------------------------------------------------------
-    # painting — rounded translucent background
+    # painting — 不再自繪背景(改用標準視窗後,Qt 自己會畫背景);
+    # 保留方法以維持簽名,避免外部 hook 失效。
     # ------------------------------------------------------------------
     def paintEvent(self, event) -> None:  # noqa: N802
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, True)
-        painter.setPen(Qt.NoPen)
-        painter.setBrush(QColor(20, 22, 30, self._widget_config.background_alpha))
-        painter.drawRoundedRect(self.rect(), 12, 12)
+        super().paintEvent(event)
 
     # ------------------------------------------------------------------
-    # drag-to-move
+    # drag-to-move — 標準視窗時 Qt 自己會處理拖曳標題列,但保留 child-aware
+    # 邏輯以防使用者拉大視窗後想抓「邊框內空白」拖移
     # ------------------------------------------------------------------
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         # 只有「點到沒有 child widget 的純背景區」才當作要拖曳整個視窗。
