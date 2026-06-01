@@ -67,6 +67,9 @@ class WidgetSection:
     window_width: int = 720
     window_height: int = 640
     background_alpha: int = 210
+    # 輕量模式:低階電腦自動開啟(關掉粒子特效、字元雨、降低 timer 頻率、
+    # 模擬 SM 從 8 顆改 4 顆),確保 4 核以下機器也跑得動。
+    lite_mode: bool = False
 
 
 @dataclass

@@ -86,6 +86,17 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_true",
         help="開機直接跳到「💻 真實硬體」分頁 — 當作多核 CPU / GPU 即時儀表板用。",
     )
+    parser.add_argument(
+        "--lite",
+        action="store_true",
+        help="輕量模式:關掉粒子特效跟字元雨、SM 減半、tick 降頻,給低階電腦用。"
+             "預設會自動偵測(4 核以下機器自動開啟),用此 flag 強制開啟。",
+    )
+    parser.add_argument(
+        "--no-lite",
+        action="store_true",
+        help="強制關閉輕量模式(就算偵測到低階機器也保持完整特效)。",
+    )
     parser.add_argument("--sms", type=int, help="Override number of streaming multiprocessors.")
     parser.add_argument("--warps-per-sm", type=int, help="Override warps per SM.")
     parser.add_argument("--vram", type=int, help="Override simulated VRAM capacity in MiB.")
@@ -117,7 +128,40 @@ def _apply_cli_overrides(config: AppConfig, args: argparse.Namespace) -> AppConf
         config.real_gpu.enabled = True
     if args.no_db:
         config.persistence.enabled = False
+    # 第 21 輪:lite mode 決策
+    # 優先順序:--no-lite 強制關 > --lite 強制開 > 自動偵測
+    if args.no_lite:
+        config.widget.lite_mode = False
+    elif args.lite:
+        config.widget.lite_mode = True
+    else:
+        # 自動偵測:邏輯核心 ≤ 2 OR 實體核心 ≤ 2 OR 記憶體 ≤ 4 GB → 自動開
+        config.widget.lite_mode = _auto_detect_low_spec()
     return config
+
+
+def _auto_detect_low_spec() -> bool:
+    """回 True 代表這台機器算「低階電腦」,應該預設開啟輕量模式。
+
+    判斷規則:
+    * 邏輯核心 ≤ 2 顆,或
+    * 實體核心 ≤ 2 顆,或
+    * 系統總記憶體 ≤ 4 GB
+
+    任何條件成立就回 True。psutil 取樣失敗時保守回 False(不影響其他功能)。
+    """
+    try:
+        import psutil
+    except ImportError:
+        return False
+    try:
+        logical = psutil.cpu_count(logical=True) or 0
+        physical = psutil.cpu_count(logical=False) or 0
+        mem = psutil.virtual_memory().total
+    except Exception:
+        return False
+    mem_gb = mem / (1024**3)
+    return logical <= 2 or physical <= 2 or mem_gb <= 4.0
 
 
 def _build_widget_overrides(args: argparse.Namespace) -> dict:

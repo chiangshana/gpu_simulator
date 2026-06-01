@@ -159,6 +159,9 @@ class WidgetConfig:
     easy_mode: bool = False
     easy_mode_demo_seconds: int = 30
     skip_welcome_dialog: bool = False
+    # 第 21 輪:低階電腦自動偵測後的輕量模式。
+    # 關掉粒子特效 / Matrix 字元雨 / 拉長 timer 頻率,讓 4 核以下機器也能順跑。
+    lite_mode: bool = False
 
 
 class WidgetMode:
@@ -218,8 +221,12 @@ burst:
 # ---------------------------------------------------------------------------
 def _gpu_config_from_app_config(app_config: AppConfig) -> GPUConfig:
     gpu_section = app_config.gpu
+    # 輕量模式把 SM 從 8 顆降到 4 顆(顯著減少要繪製的方格數量)
+    num_sms = gpu_section.num_sms
+    if app_config.widget.lite_mode:
+        num_sms = min(num_sms, 4)
     return GPUConfig(
-        num_sms=gpu_section.num_sms,
+        num_sms=num_sms,
         warps_per_sm=gpu_section.warps_per_sm,
         threads_per_warp=gpu_section.threads_per_warp,
         vram_capacity_bytes=gpu_section.vram_capacity_mib * 1024 * 1024,
@@ -237,6 +244,7 @@ def _widget_config_from_app_config(app_config: AppConfig) -> WidgetConfig:
         window_width=widget_section.window_width,
         window_height=widget_section.window_height,
         background_alpha=widget_section.background_alpha,
+        lite_mode=widget_section.lite_mode,
     )
 
 
@@ -1048,7 +1056,12 @@ class GPUVizWidget(QWidget):
         self._tick_counter = 0
         self._kernels_this_session = 0
         self._timer = QTimer(self)
-        self._timer.setInterval(self._widget_config.tick_interval_ms)
+        # 輕量模式把模擬 tick 從 100ms 拉長到 250ms,大幅降低 CPU 用量
+        # (代價:動畫看起來會慢一點,但低階機器才跑得動)
+        tick_ms = self._widget_config.tick_interval_ms
+        if getattr(self._widget_config, "lite_mode", False):
+            tick_ms = max(250, tick_ms)
+        self._timer.setInterval(tick_ms)
         self._timer.timeout.connect(self._on_tick)
         self._timer.start()
         self._real_gpu_timer = QTimer(self)
@@ -2127,18 +2140,28 @@ class GPUVizWidget(QWidget):
     # 第十一輪:粒子 / 雨 / 電影 / TTS handlers
     # ==================================================================
     def _setup_visual_overlays(self) -> None:
-        """主視窗 widget 已就緒後,建立粒子 + 雨 overlay,並把雨壓在最底。"""
-        try:
-            self._code_rain_overlay = build_code_rain_overlay(self)
-            self._code_rain_overlay.lower()
-            self._code_rain_overlay.show()
-        except Exception:
+        """主視窗 widget 已就緒後,建立粒子 + 雨 overlay,並把雨壓在最底。
+
+        **輕量模式(lite_mode)會完全跳過粒子+字元雨**,讓 4 核以下機器也能跑。
+        這兩個 overlay 各自有 30 FPS 的 QTimer 在跑 paintEvent,是最大的效能殺手。
+        """
+        lite = getattr(self._widget_config, "lite_mode", False)
+        if not lite:
+            try:
+                self._code_rain_overlay = build_code_rain_overlay(self)
+                self._code_rain_overlay.lower()
+                self._code_rain_overlay.show()
+            except Exception:
+                self._code_rain_overlay = None
+            try:
+                self._particle_overlay = build_particle_overlay(self)
+                self._particle_overlay.raise_()
+                self._particle_overlay.show()
+            except Exception:
+                self._particle_overlay = None
+        else:
+            # 輕量模式直接設成 None,後面所有用 overlay 的地方都會檢查並 noop
             self._code_rain_overlay = None
-        try:
-            self._particle_overlay = build_particle_overlay(self)
-            self._particle_overlay.raise_()
-            self._particle_overlay.show()
-        except Exception:
             self._particle_overlay = None
         # cinema 字幕(浮在最上層)
         self._cinema_caption_label = QLabel("", self)
@@ -2162,7 +2185,8 @@ class GPUVizWidget(QWidget):
         )
         self._kernel_launch_count = 0
         self._status_refresh_timer = QTimer(self)
-        self._status_refresh_timer.setInterval(1000)
+        # 輕量模式把狀態列從 1s 延長到 3s,降低重繪頻率
+        self._status_refresh_timer.setInterval(3000 if lite else 1000)
         self._status_refresh_timer.timeout.connect(self._refresh_status_bar)
         self._status_refresh_timer.start()
         self._setup_global_shortcuts()
@@ -2362,6 +2386,8 @@ class GPUVizWidget(QWidget):
             snap = self._gpu.snapshot()
             util_pct = float(snap.get("overall_utilization", 0.0)) * 100.0
         mode = "電影模式" if getattr(self, "_cinema_player", None) is not None else "即時"
+        if getattr(self._widget_config, "lite_mode", False):
+            mode = f"輕量 · {mode}"
         fps = float(1000.0 / max(1, self._widget_config.tick_interval_ms))
         snapshot = StatusSnapshot(
             version=version,
