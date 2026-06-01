@@ -10,7 +10,6 @@ fabricated snapshot.
 from __future__ import annotations
 
 import math
-from collections import deque
 from dataclasses import dataclass
 
 from PySide6.QtCore import Qt, Signal
@@ -40,7 +39,6 @@ from gpu_simulator.commentary import (
     classify_row,
 )
 from gpu_simulator.i18n import kernel_label, t, trigger_label
-from gpu_simulator.persistence import SessionMeta
 
 # ---------------------------------------------------------------------------
 # shared constants
@@ -392,201 +390,10 @@ def _localize_event_message(message: str) -> str:
 # ---------------------------------------------------------------------------
 # analytics chart (matplotlib embedded in Qt)
 # ---------------------------------------------------------------------------
-class AnalyticsChart(QWidget):
-    """Time-series chart of utilisation and VRAM drawn with matplotlib.
+# (Round 23: class AnalyticsChart removed)
 
-    Rendering matplotlib every simulation tick would starve the GUI
-    thread, so the chart only redraws once every ``redraw_every`` calls.
-    """
+# (Round 23: class HistoryPanel removed)
 
-    def __init__(
-        self,
-        history_size: int = 300,
-        redraw_every: int = 5,
-        parent: QWidget | None = None,
-    ) -> None:
-        super().__init__(parent)
-        self._redraw_every = max(1, int(redraw_every))
-        self._update_counter = 0
-        self._clocks: deque[int] = deque(maxlen=history_size)
-        self._utilisations: deque[float] = deque(maxlen=history_size)
-        self._vram_mib: deque[float] = deque(maxlen=history_size)
-        self._canvas = None
-        self._figure = None
-        self._util_axis = None
-        self._vram_axis = None
-        self._error_label: QLabel | None = None
-        self._build_canvas()
-
-    def _build_canvas(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        try:
-            from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
-            from matplotlib.figure import Figure
-        except ImportError:
-            self._error_label = QLabel(
-                "matplotlib is not installed — run `pip install matplotlib` "
-                "to enable the analytics chart."
-            )
-            self._error_label.setWordWrap(True)
-            self._error_label.setStyleSheet(
-                f"color: rgba({TEXT_DIM.red()},{TEXT_DIM.green()},{TEXT_DIM.blue()},255);"
-            )
-            layout.addWidget(self._error_label)
-            return
-
-        self._figure = Figure(figsize=(4.2, 2.6), tight_layout=True)
-        self._figure.patch.set_alpha(0.0)
-        self._canvas = FigureCanvasQTAgg(self._figure)
-        self._canvas.setStyleSheet("background: transparent;")
-        self._util_axis = self._figure.add_subplot(111)
-        self._vram_axis = self._util_axis.twinx()
-        for axis in (self._util_axis, self._vram_axis):
-            axis.patch.set_alpha(0.0)
-        layout.addWidget(self._canvas)
-
-    def update_snapshot(self, snapshot: dict) -> None:
-        if self._canvas is None or self._util_axis is None or self._vram_axis is None:
-            return
-        self._clocks.append(int(snapshot.get("clock", 0)))
-        self._utilisations.append(float(snapshot.get("overall_utilization", 0.0)) * 100.0)
-        vram_used = snapshot.get("vram", {}).get("used_bytes", 0)
-        self._vram_mib.append(vram_used / 1024.0 / 1024.0)
-
-        self._update_counter += 1
-        if self._update_counter % self._redraw_every != 0:
-            return
-        self._util_axis.clear()
-        self._vram_axis.clear()
-        self._util_axis.plot(
-            list(self._clocks), list(self._utilisations), color="#f0a040", linewidth=1.4
-        )
-        self._util_axis.set_ylim(0, 100)
-        self._util_axis.set_xlabel("clock", color="#9ca0b0", fontsize=8)
-        self._util_axis.set_ylabel("util %", color="#f0a040", fontsize=8)
-        self._util_axis.tick_params(axis="x", colors="#9ca0b0", labelsize=7)
-        self._util_axis.tick_params(axis="y", colors="#f0a040", labelsize=7)
-        self._util_axis.grid(True, alpha=0.15)
-        for spine in self._util_axis.spines.values():
-            spine.set_color("#444a5a")
-
-        self._vram_axis.plot(
-            list(self._clocks), list(self._vram_mib), color="#78b4ff", linewidth=1.4
-        )
-        self._vram_axis.set_ylabel("VRAM MiB", color="#78b4ff", fontsize=8)
-        self._vram_axis.tick_params(axis="y", colors="#78b4ff", labelsize=7)
-        for spine in self._vram_axis.spines.values():
-            spine.set_color("#444a5a")
-
-        self._canvas.draw_idle()
-
-    def reset(self) -> None:
-        self._clocks.clear()
-        self._utilisations.clear()
-        self._vram_mib.clear()
-        self._update_counter = 0
-        if self._util_axis is not None and self._vram_axis is not None:
-            self._util_axis.clear()
-            self._vram_axis.clear()
-            if self._canvas is not None:
-                self._canvas.draw_idle()
-
-
-# ---------------------------------------------------------------------------
-# session history panel
-# ---------------------------------------------------------------------------
-class HistoryPanel(QWidget):
-    """List of past sessions; emits signals when the user wants to act on one."""
-
-    refresh_requested = Signal()
-    replay_requested = Signal(int)
-    export_requested = Signal(int, str)  # (session_id, "csv" | "json" | "markdown" | "png")
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self._list_widget = QListWidget()
-        self._list_widget.setStyleSheet(
-            """
-            QListWidget {
-                background: rgba(20, 22, 30, 180);
-                color: rgb(220, 224, 236);
-                border: 1px solid rgba(90, 100, 130, 120);
-                border-radius: 4px;
-                font-family: Consolas, 'Courier New', monospace;
-                font-size: 10px;
-            }
-            QListWidget::item { padding: 2px 4px; }
-            QListWidget::item:selected { background: rgba(120, 180, 255, 120); }
-            """
-        )
-        self._refresh_button = _styled_button(t("btn.refresh"))
-        self._replay_button = _styled_button(t("btn.replay"))
-        self._export_csv_button = _styled_button(t("btn.export_csv"))
-        self._export_md_button = _styled_button(t("btn.export_md"))
-        self._export_png_button = _styled_button(t("btn.export_png"))
-
-        self._refresh_button.clicked.connect(self._emit_refresh)
-        self._replay_button.clicked.connect(self._emit_replay)
-        self._export_csv_button.clicked.connect(lambda: self._emit_export("csv"))
-        self._export_md_button.clicked.connect(lambda: self._emit_export("markdown"))
-        self._export_png_button.clicked.connect(lambda: self._emit_export("png"))
-
-        button_row = QHBoxLayout()
-        button_row.setContentsMargins(0, 0, 0, 0)
-        button_row.setSpacing(4)
-        self._refresh_button.setToolTip("從資料庫重新載入歷史 session")
-        self._replay_button.setToolTip("把選中的 session 在 Live 分頁重播一遍")
-        button_row.addWidget(self._refresh_button)
-        button_row.addWidget(self._replay_button)
-        button_row.addStretch(1)
-        export_label = QLabel("匯出:")
-        export_label.setStyleSheet(
-            f"color: rgba({TEXT_DIM.red()},{TEXT_DIM.green()},{TEXT_DIM.blue()},255);"
-            "font-size: 10px;"
-        )
-        button_row.addWidget(export_label)
-        button_row.addWidget(self._export_csv_button)
-        button_row.addWidget(self._export_md_button)
-        button_row.addWidget(self._export_png_button)
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(4)
-        layout.addWidget(self._list_widget, 1)
-        layout.addLayout(button_row)
-
-    def populate(self, sessions: list[SessionMeta]) -> None:
-        self._list_widget.clear()
-        for meta in sessions:
-            item = QListWidgetItem(meta.pretty_label())
-            item.setData(Qt.UserRole, meta.session_id)
-            self._list_widget.addItem(item)
-
-    def _selected_session_id(self) -> int | None:
-        current = self._list_widget.currentItem()
-        if current is None:
-            return None
-        session_id = current.data(Qt.UserRole)
-        return int(session_id) if session_id is not None else None
-
-    def _emit_refresh(self) -> None:
-        self.refresh_requested.emit()
-
-    def _emit_replay(self) -> None:
-        session_id = self._selected_session_id()
-        if session_id is not None:
-            self.replay_requested.emit(session_id)
-
-    def _emit_export(self, format_name: str) -> None:
-        session_id = self._selected_session_id()
-        if session_id is not None:
-            self.export_requested.emit(session_id, format_name)
-
-
-# ---------------------------------------------------------------------------
-# real GPU panel
-# ---------------------------------------------------------------------------
 class RealGPUPanel(QFrame):
     """Shows the latest reading from the real GPU (when a backend is available)."""
 
@@ -2931,76 +2738,8 @@ class GPU3DView(QWidget):
 # ===========================================================================
 # 第九輪 #1 · ASM 遊戲機(Conway's Life)widget
 # ===========================================================================
-class LifeBoardWidget(QWidget):
-    """8x8 棋盤,點選格子可手動切換生死(Reset 後);跑時純顯示。"""
+# (Round 23: class LifeBoardWidget removed)
 
-    cell_toggled = Signal(int, int)  # row, col
-
-    GRID_SIZE = 8
-    CELL_PADDING = 2
-
-    def __init__(self, parent: QWidget | None = None) -> None:
-        super().__init__(parent)
-        self.setMinimumSize(200, 200)
-        self._cells: list[list[int]] = [[0] * self.GRID_SIZE for _ in range(self.GRID_SIZE)]
-        self._editable = False
-
-    def set_cells(self, cells: list[list[int]]) -> None:
-        self._cells = [list(row) for row in cells]
-        self.update()
-
-    def set_editable(self, editable: bool) -> None:
-        self._editable = editable
-
-    def mousePressEvent(self, event) -> None:  # noqa: N802
-        if not self._editable:
-            return
-        size = self._cell_size()
-        if size <= 0:
-            return
-        offset_x = (self.width() - size * self.GRID_SIZE) // 2
-        offset_y = (self.height() - size * self.GRID_SIZE) // 2
-        local_x = event.position().x() - offset_x
-        local_y = event.position().y() - offset_y
-        if local_x < 0 or local_y < 0:
-            return
-        col = int(local_x // size)
-        row = int(local_y // size)
-        if 0 <= row < self.GRID_SIZE and 0 <= col < self.GRID_SIZE:
-            self._cells[row][col] = 1 - self._cells[row][col]
-            self.cell_toggled.emit(row, col)
-            self.update()
-
-    def _cell_size(self) -> int:
-        side = min(self.width(), self.height())
-        return max(8, side // (self.GRID_SIZE + 1))
-
-    def paintEvent(self, event) -> None:  # noqa: N802
-        painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing, False)
-        painter.fillRect(self.rect(), QColor(15, 17, 24, 240))
-        size = self._cell_size()
-        offset_x = (self.width() - size * self.GRID_SIZE) // 2
-        offset_y = (self.height() - size * self.GRID_SIZE) // 2
-        for row in range(self.GRID_SIZE):
-            for col in range(self.GRID_SIZE):
-                rect_x = offset_x + col * size
-                rect_y = offset_y + row * size
-                alive = self._cells[row][col] == 1
-                color = QColor(255, 200, 80) if alive else QColor(28, 32, 44)
-                painter.setBrush(color)
-                painter.setPen(QPen(QColor(60, 70, 90), 1))
-                painter.drawRect(
-                    rect_x + self.CELL_PADDING,
-                    rect_y + self.CELL_PADDING,
-                    size - self.CELL_PADDING * 2,
-                    size - self.CELL_PADDING * 2,
-                )
-
-
-# ===========================================================================
-# 第九輪 #8 · Warp 發散 + 記憶體 coalescing 視圖
-# ===========================================================================
 class DivergenceView(QWidget):
     """以 32 格網格畫出 warp 分支發散與記憶體存取兩種模式。
 

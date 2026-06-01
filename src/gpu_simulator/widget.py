@@ -49,7 +49,6 @@ from gpu_simulator.ai_explainer import (
 from gpu_simulator.ai_explainer import (
     is_available as ai_is_available,
 )
-from gpu_simulator.asm_games import LifeGameRunner
 from gpu_simulator.bridge import CPUGPUBridge
 from gpu_simulator.challenges import (
     LeaderboardStore,
@@ -95,8 +94,7 @@ from gpu_simulator.easter_eggs import (
     dispatch as eegg_dispatch,
 )
 from gpu_simulator.event_listener import EventListener, EventListenerConfig, KernelQueue
-from gpu_simulator.exceptions import GPUVizError, PersistenceError
-from gpu_simulator.exporter import SessionExporter
+from gpu_simulator.exceptions import PersistenceError
 from gpu_simulator.full_bridge import FullCPUGPUBridge
 from gpu_simulator.gpu_pet import GPUPetWidget
 from gpu_simulator.i18n import t
@@ -118,7 +116,6 @@ from gpu_simulator.tts import is_available as tts_is_available
 from gpu_simulator.tts import speak as tts_speak
 from gpu_simulator.visualizer import (
     DEFAULT_ASM_PROGRAM,
-    AnalyticsChart,
     AsmInputPanel,
     CycleCinemaView,
     DebugView,
@@ -126,8 +123,6 @@ from gpu_simulator.visualizer import (
     EventLogWidget,
     GPU3DView,
     HeatmapView,
-    HistoryPanel,
-    LifeBoardWidget,
     LiveCommentaryPanel,
     MemoryMapView,
     PipelineWidget,
@@ -435,22 +430,7 @@ class GPUVizWidget(QWidget):
         live_layout.addWidget(_section_label(t("section.event_log")))
         live_layout.addWidget(self._event_log, 3)
 
-        self._analytics_chart = AnalyticsChart(history_size=300, redraw_every=5, parent=self)
-        analytics_tab = QWidget()
-        analytics_layout = QVBoxLayout(analytics_tab)
-        analytics_layout.setContentsMargins(4, 4, 4, 4)
-        analytics_layout.addWidget(_section_label(t("section.analytics.title")))
-        analytics_layout.addWidget(_section_label(t("section.analytics.tip")))
-        analytics_layout.addWidget(self._analytics_chart, 1)
-
-        self._history_panel = HistoryPanel(self)
-        self._history_panel.setEnabled(self._session_store is not None)
-        history_tab = QWidget()
-        history_layout = QVBoxLayout(history_tab)
-        history_layout.setContentsMargins(4, 4, 4, 4)
-        history_layout.addWidget(_section_label(t("section.history.title")))
-        history_layout.addWidget(_section_label(t("section.history.tip")))
-        history_layout.addWidget(self._history_panel, 1)
+        # (第 23 輪砍掉:Analytics chart + History panel)
 
         self._trace_table = TraceTable(parent=self)
         self._commentary_panel = LiveCommentaryPanel(parent=self)
@@ -515,58 +495,7 @@ class GPUVizWidget(QWidget):
         )
         gpu_3d_layout.addWidget(self._gpu_3d_view, 1)
 
-        # 🎮 ASM 遊戲機 — Conway's Game of Life
-        self._life_runner: LifeGameRunner | None = None
-        self._life_board_widget = LifeBoardWidget(parent=self)
-        self._life_status_label = QLabel(
-            "🎮 ASM 遊戲機:用 Tiny8 ASM 跑 Conway's Game of Life。"
-            "點 Reset 後可手動點格子設計初始圖樣。"
-        )
-        self._life_status_label.setStyleSheet(
-            "color: rgba(220, 224, 236, 230); font-size: 11px; padding: 4px 0;"
-        )
-        self._life_status_label.setWordWrap(True)
-        self._life_button_seed_glider = self._create_action_button(
-            "🚀 滑翔機", "載入 glider 圖樣", lambda: self._life_seed("glider")
-        )
-        self._life_button_seed_blinker = self._create_action_button(
-            "💡 閃爍器", "載入週期 2 的 blinker", lambda: self._life_seed("blinker")
-        )
-        self._life_button_seed_random = self._create_action_button(
-            "🎲 隨機", "亂數初始狀態", lambda: self._life_seed("random")
-        )
-        self._life_button_step = self._create_action_button(
-            "⏭ 下一代", "Python 算下一代,asm 同時派 8 顆 GPU kernel", self._life_step
-        )
-        self._life_button_play = self._create_action_button(
-            "▶ 自動播放", "每 600ms 跑下一代", self._life_toggle_play
-        )
-        self._life_button_reset = self._create_action_button(
-            "⟲ 重置", "清空棋盤(可手動點選格子)", self._life_reset
-        )
-        self._life_play_timer = QTimer(self)
-        self._life_play_timer.setInterval(600)
-        self._life_play_timer.timeout.connect(self._life_step)
-
-        life_tab = QWidget()
-        life_layout = QVBoxLayout(life_tab)
-        life_layout.setContentsMargins(4, 4, 4, 4)
-        life_layout.addWidget(
-            _section_label(
-                "🎮 ASM 遊戲機 — Conway's Life 跑在 Tiny8 + 虛擬 GPU 上"
-            )
-        )
-        life_layout.addWidget(self._life_status_label)
-        life_layout.addWidget(self._life_board_widget, 5)
-        life_button_row = QHBoxLayout()
-        life_button_row.addWidget(self._life_button_seed_glider)
-        life_button_row.addWidget(self._life_button_seed_blinker)
-        life_button_row.addWidget(self._life_button_seed_random)
-        life_button_row.addStretch(1)
-        life_button_row.addWidget(self._life_button_step)
-        life_button_row.addWidget(self._life_button_play)
-        life_button_row.addWidget(self._life_button_reset)
-        life_layout.addLayout(life_button_row)
+        # (第 23 輪砍掉:🎮 ASM 遊戲機 — Conway's Game of Life)
 
         # 🧠 Divergence + coalescing 視圖
         self._divergence_view = DivergenceView(parent=self)
@@ -978,9 +907,7 @@ class GPUVizWidget(QWidget):
         return button
 
     def _wire_signals(self) -> None:
-        self._history_panel.refresh_requested.connect(self._refresh_history)
-        self._history_panel.replay_requested.connect(self._start_replay)
-        self._history_panel.export_requested.connect(self._export_session)
+        # (第 23 輪砍掉:_history_panel 的 refresh/replay/export 三條 signal)
         self._asm_panel.run_requested.connect(self._asm_run)
         self._asm_panel.step_requested.connect(self._asm_step_one)
         self._asm_panel.reset_requested.connect(self._asm_reset)
@@ -1104,7 +1031,7 @@ class GPUVizWidget(QWidget):
         self._warp_animation.update_snapshot(snapshot)
         self._gpu_3d_view.update_snapshot(snapshot)
         self._event_log.update_snapshot(snapshot)
-        self._analytics_chart.update_snapshot(snapshot)
+        # (第 23 輪砍掉:self._analytics_chart.update_snapshot)
         self._pet_widget.update_from_snapshot(snapshot)
         self._maybe_detect_idle_kernel(snapshot)
         self._mirror_publisher.publish(snapshot)
@@ -1158,37 +1085,10 @@ class GPUVizWidget(QWidget):
         self._real_gpu_panel.update_sample(sample)
 
     # ------------------------------------------------------------------
-    # history / replay / export
+    # (第 23 輪砍掉:_refresh_history / _start_replay — 對應 📚 歷史分頁)
+    # _export_session 也一併移除
+    # session 寫入 SQLite 仍會持續,只是沒有 UI 入口去看舊紀錄了
     # ------------------------------------------------------------------
-    def _refresh_history(self) -> None:
-        if self._session_store is None:
-            return
-        try:
-            sessions = self._session_store.list_sessions()
-        except PersistenceError as exc:
-            self._show_error("History", str(exc))
-            return
-        self._history_panel.populate(sessions)
-
-    def _start_replay(self, session_id: int) -> None:
-        if self._session_store is None:
-            return
-        try:
-            snapshots = list(self._session_store.iter_snapshots(session_id))
-        except PersistenceError as exc:
-            self._show_error("重播", str(exc))
-            return
-        if not snapshots:
-            self._show_error("重播", t("err.no_history_session"))
-            return
-        self._replay_snapshots = snapshots
-        self._replay_index = 0
-        self._replay_session_id = session_id
-        self._event_log.reset()
-        self._analytics_chart.reset()
-        self._mode = WidgetMode.REPLAY
-        self._set_mode_label(t("mode.replay", session_id=session_id), QColor(255, 180, 90))
-        self._tabs.setCurrentIndex(0)
 
     def _advance_replay(self) -> None:
         if self._replay_index >= len(self._replay_snapshots):
@@ -1712,39 +1612,7 @@ class GPUVizWidget(QWidget):
         self._full_previous_registers = registers
         self._full_previous_memory = memory
 
-    def _export_session(self, session_id: int, format_name: str) -> None:
-        if self._session_store is None:
-            return
-        extension_by_format = {
-            "csv": "csv",
-            "json": "json",
-            "markdown": "md",
-            "png": "png",
-        }
-        extension = extension_by_format.get(format_name, format_name)
-        from gpu_simulator.config import user_config_dir
-
-        export_dir = user_config_dir() / "exports"
-        output_path = export_dir / f"session_{session_id}.{extension}"
-        exporter = SessionExporter(self._session_store)
-        try:
-            if format_name == "csv":
-                result = exporter.to_csv(session_id, output_path)
-            elif format_name == "json":
-                result = exporter.to_json(session_id, output_path)
-            elif format_name == "markdown":
-                result = exporter.to_markdown(session_id, output_path)
-            elif format_name == "png":
-                result = exporter.to_png(session_id, output_path)
-            else:
-                return
-        except GPUVizError as exc:
-            self._show_error("Export", str(exc))
-            return
-        self._show_info(
-            "Export",
-            f"Wrote {result.rows_written} rows to:\n{result.path}",
-        )
+    # (第 23 輪砍掉:_export_session — 對應 📚 歷史分頁的匯出功能)
 
     # ------------------------------------------------------------------
     # infrastructure helpers
@@ -1953,60 +1821,7 @@ class GPUVizWidget(QWidget):
     # 第九輪新功能的 handlers(全部放在 cleanup 之前)
     # ==================================================================
 
-    # ---- Conway's Life 遊戲機 ----------------------------------------
-    def _ensure_life_runner(self) -> LifeGameRunner:
-        if self._life_runner is None:
-            self._life_runner = LifeGameRunner()
-        return self._life_runner
-
-    def _life_seed(self, mode: str) -> None:
-        runner = self._ensure_life_runner()
-        runner.seed(mode)
-        runner.start_simulator()
-        self._life_board_widget.set_cells(runner.board.snapshot_rows())
-        self._life_board_widget.set_editable(False)
-        self._update_life_status()
-
-    def _life_step(self) -> None:
-        runner = self._ensure_life_runner()
-        stats = runner.step_one_generation()
-        self._life_board_widget.set_cells(runner.board.snapshot_rows())
-        self._life_board_widget.set_editable(False)
-        self._update_life_status()
-        play_kernel_chord("texture_load")
-        if stats.alive_cells == 0:
-            self._life_play_timer.stop()
-            self._life_button_play.setText("▶ 自動播放")
-
-    def _life_toggle_play(self) -> None:
-        if self._life_play_timer.isActive():
-            self._life_play_timer.stop()
-            self._life_button_play.setText("▶ 自動播放")
-        else:
-            self._ensure_life_runner()
-            self._life_play_timer.start()
-            self._life_button_play.setText("⏸ 暫停")
-
-    def _life_reset(self) -> None:
-        self._life_play_timer.stop()
-        self._life_button_play.setText("▶ 自動播放")
-        self._life_runner = LifeGameRunner()
-        self._life_runner.seed("blinker")  # 預設;隨後使用者點格子改
-        self._life_runner.start_simulator()
-        self._life_runner.board.reset()
-        self._life_board_widget.set_cells(self._life_runner.board.snapshot_rows())
-        self._life_board_widget.set_editable(True)
-        self._update_life_status()
-
-    def _update_life_status(self) -> None:
-        if self._life_runner is None:
-            return
-        stats = self._life_runner.stats()
-        self._life_status_label.setText(
-            f"🎮 第 {stats.generations} 代 · 存活 {stats.alive_cells} 格 · "
-            f"GPU 累計 {stats.kernels_submitted}/{stats.kernels_completed} kernel · "
-            f"asm 已跑 {stats.cycles_executed} cycles"
-        )
+    # (第 23 輪砍掉:Conway's Life 遊戲機 — 6 個 _life_* methods)
 
     # ---- Divergence 視圖 --------------------------------------------
     def _refresh_divergence_view(self) -> None:
@@ -2617,8 +2432,6 @@ class GPUVizWidget(QWidget):
                 self._mirror_server.stop()
         if self._leaderboard_store is not None:
             self._leaderboard_store.close()
-        if hasattr(self, "_life_play_timer"):
-            self._life_play_timer.stop()
         super().closeEvent(event)
 
 

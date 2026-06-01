@@ -22,12 +22,6 @@ from gpu_simulator.ai_explainer import (
 from gpu_simulator.ai_explainer import (
     is_available as ai_is_available,
 )
-from gpu_simulator.asm_games import (
-    GRID_BASE_ADDRESS,
-    GRID_BYTES,
-    LifeBoard,
-    LifeGameRunner,
-)
 from gpu_simulator.bridge import CPUGPUBridge
 from gpu_simulator.challenges import (
     Challenge,
@@ -209,51 +203,8 @@ def test_summarize_helpers():
 
 
 # ---------------------------------------------------------------------------
-# #1 asm_games (Conway's Life)
+# (第 23 輪砍掉了 asm_games / Conway's Life,5 個對應測試一併刪除)
 # ---------------------------------------------------------------------------
-def test_blinker_oscillates_with_period_2():
-    runner = LifeGameRunner()
-    runner.seed("blinker")
-    runner.start_simulator()
-    initial = runner.board.snapshot_rows()
-    runner.step_one_generation()
-    after_one = runner.board.snapshot_rows()
-    runner.step_one_generation()
-    after_two = runner.board.snapshot_rows()
-    assert initial != after_one
-    assert initial == after_two
-
-
-def test_each_generation_dispatches_8_kernels():
-    runner = LifeGameRunner()
-    runner.seed("blinker")
-    runner.start_simulator()
-    before = runner.bridge.gpu.kernels_submitted
-    runner.step_one_generation()
-    after = runner.bridge.gpu.kernels_submitted
-    assert after - before == 8
-
-
-def test_life_board_writes_grid_into_tiny8_ram():
-    runner = LifeGameRunner()
-    runner.seed("blinker")
-    runner.start_simulator()
-    # blinker 中三個活細胞:row=3, col=2..4 → 位址 = 0x80 + 3*8 + (2..4)
-    for col in (2, 3, 4):
-        addr = GRID_BASE_ADDRESS + 3 * 8 + col
-        assert runner.bridge.cpu.read_ram(addr) == 1
-
-
-def test_life_board_step_works_in_pure_python():
-    board = LifeBoard()
-    board.seed_blinker()
-    initial_alive = board.alive_count()
-    board.step()
-    assert board.alive_count() == initial_alive  # blinker 維持 3 個活細胞
-
-
-def test_grid_size_constants():
-    assert GRID_BYTES == 64
 
 
 # ---------------------------------------------------------------------------

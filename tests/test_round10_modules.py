@@ -4,12 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from gpu_simulator.asm_games import (
-    SNAKE_BASE_ADDRESS,
-    SNAKE_SIZE,
-    Direction,
-    SnakeGameRunner,
-)
 from gpu_simulator.bridge import CPUGPUBridge
 from gpu_simulator.cache import (
     AccessKind,
@@ -247,40 +241,8 @@ def test_dsl_undefined_variable_raises():
 
 
 # ---------------------------------------------------------------------------
-# X3 Snake
+# (第 23 輪砍掉了 asm_games / Snake game,4 個對應測試一併刪除)
 # ---------------------------------------------------------------------------
-def test_snake_initial_state_has_3_segments_and_alive():
-    runner = SnakeGameRunner()
-    snapshot = runner.board_snapshot()
-    body_count = sum(cell == 1 for row in snapshot for cell in row)
-    head_count = sum(cell == 2 for row in snapshot for cell in row)
-    food_count = sum(cell == 3 for row in snapshot for cell in row)
-    assert head_count == 1
-    assert body_count == 2
-    assert food_count == 1
-    assert runner.alive
-
-
-def test_snake_step_dispatches_kernels():
-    runner = SnakeGameRunner()
-    before = runner.bridge.gpu.kernels_submitted
-    runner.step()
-    after = runner.bridge.gpu.kernels_submitted
-    assert after > before
-
-
-def test_snake_set_direction_blocks_180_reverse():
-    runner = SnakeGameRunner()
-    runner.direction = Direction.LEFT
-    runner.set_direction(Direction.RIGHT)  # 應該被擋
-    assert runner.direction == Direction.LEFT
-    runner.set_direction(Direction.UP)  # 90 度允許
-    assert runner.direction == Direction.UP
-
-
-def test_snake_constants_match_layout():
-    assert SNAKE_SIZE == 8
-    assert SNAKE_BASE_ADDRESS == 0xC0
 
 
 # ---------------------------------------------------------------------------
