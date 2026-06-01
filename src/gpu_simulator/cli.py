@@ -82,6 +82,11 @@ def _parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="啟動後立即進入電影模式,自動跑 60 秒 showcase(適合錄展示影片)。",
     )
     parser.add_argument(
+        "--tutorial",
+        action="store_true",
+        help="啟動後立即進入「10 分鐘詳細導覽」模式 — 給零程式基礎觀眾看的教學版。",
+    )
+    parser.add_argument(
         "--monitor",
         action="store_true",
         help="開機直接跳到「💻 真實硬體」分頁 — 當作多核 CPU / GPU 即時儀表板用。",
@@ -345,6 +350,10 @@ def main(argv: list[str] | None = None) -> int:
         from PySide6.QtCore import QTimer
 
         QTimer.singleShot(500, widget._start_cinema_mode)
+    if args.tutorial:
+        from PySide6.QtCore import QTimer
+
+        QTimer.singleShot(500, widget._start_tutorial_mode)
     return app.exec()
 
 

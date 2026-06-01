@@ -467,7 +467,10 @@ class GPUVizWidget(QWidget):
         sequence_layout = QVBoxLayout(sequence_tab)
         sequence_layout.setContentsMargins(4, 4, 4, 4)
         sequence_layout.addWidget(
-            _section_label("🔁 CPU ↔ GPU 時序圖(KLAUNCH 用橘色箭頭往下、kernel-done 用綠色虛線往上)")
+            _section_label(
+                "🔁 CPU 跟 GPU 對話的時序圖 — 橘色實線箭頭往下 = CPU 派工(KLAUNCH);"
+                "綠色虛線往上 = GPU 回報「我做完了」"
+            )
         )
         sequence_layout.addWidget(self._sequence_view, 1)
 
@@ -517,10 +520,12 @@ class GPUVizWidget(QWidget):
             self._refresh_divergence_view()
 
         self._divergence_swap_btn = self._create_action_button(
-            "切換分支模式", "下一個 warp divergence 預設", _cycle_divergence
+            "🔀 換分支模式", "切換到下一個「平行小組(warp)分歧」的預設情境", _cycle_divergence
         )
         self._coalescing_swap_btn = self._create_action_button(
-            "切換存取模式", "下一個 memory coalescing 預設", _cycle_coalescing
+            "📚 換讀取模式",
+            "切換到下一個「記憶體合併讀取(memory coalescing)」的預設情境",
+            _cycle_coalescing,
         )
         divergence_tab = QWidget()
         divergence_layout = QVBoxLayout(divergence_tab)
@@ -544,7 +549,7 @@ class GPUVizWidget(QWidget):
         cinema_layout.setContentsMargins(4, 4, 4, 4)
         cinema_layout.addWidget(
             _section_label(
-                "🎬 Cycle Cinema — 同框看 CPU 跟 GPU 每個 cycle 的合作(可拖滑桿前後)"
+                "🎬 慢動作劇場 — 同框看 CPU 跟 GPU 每一拍(cycle)的合作,可拖下方拉桿前後播"
             )
         )
         cinema_layout.addWidget(self._cinema_view, 1)
@@ -575,7 +580,9 @@ class GPUVizWidget(QWidget):
             )
         )
         full_layout.addWidget(self._tiny8_full_view, 4)
-        full_layout.addWidget(_section_label("💻 完整 Tiny8 ASM 編輯器(支援 ADD/MUL/CALL/RJMP/...)"))
+        full_layout.addWidget(
+            _section_label("💻 完整 Tiny8 程式編輯器(組合語言 ASM,支援 60+ 條指令)")
+        )
         full_layout.addWidget(self._full_asm_panel, 4)
 
         # demo tab (only shown in easy mode)
@@ -802,13 +809,19 @@ class GPUVizWidget(QWidget):
             self._show_lesson_dialog,
         )
         self._ai_button = self._create_action_button(
-            "🤖 AI 解釋", "用 Claude 解釋目前的 ASM 程式 + trace", self._show_ai_explainer
+            "🤖 AI 解釋",
+            "用 AI(Claude)把剛剛的程式跟執行紀錄翻成白話中文解釋",
+            self._show_ai_explainer,
         )
         self._challenge_button = self._create_action_button(
-            "🏁 每日挑戰", "查看今日挑戰、提交分數到排行榜", self._show_daily_challenge
+            "🏁 每日挑戰",
+            "看今天的程式設計小挑戰,完成後分數會上排行榜",
+            self._show_daily_challenge,
         )
         self._lab_report_button = self._create_action_button(
-            "📜 產出報告", "為剛剛的 ASM 執行產生 Markdown 實驗報告 + 圖", self._generate_lab_report
+            "📜 產出報告",
+            "把剛跑完的程式自動寫成一份附圖的文字報告(Markdown 格式)",
+            self._generate_lab_report,
         )
         self._mirror_button = self._create_action_button(
             "🌐 開啟 Web 鏡像",
@@ -820,13 +833,19 @@ class GPUVizWidget(QWidget):
             self._cycle_theme,
         )
         self._profiler_button = self._create_action_button(
-            "📈 效能分析", "顯示這次 ASM 執行的 per-kernel 效能 + Roofline 摘要",
+            "📈 效能分析",
+            "看剛跑的程式裡,每個 GPU 工作(kernel)花了多少時間 + Roofline 效能圖",
             self._show_profiler,
         )
         # ---- 第十一輪 spectacle 按鈕 ----
         self._cinema_button = self._create_action_button(
             "🎬 電影模式", "自動跑 60 秒 showcase,適合錄展示影片",
             self._start_cinema_mode,
+        )
+        self._tutorial_button = self._create_action_button(
+            "📖 10 分鐘導覽",
+            "10 分鐘詳細教學版 — 零程式基礎也能跟著看,逐個概念講解",
+            self._start_tutorial_mode,
         )
         self._tts_button = self._create_action_button(
             "🗣️ TTS", "切換中文 TTS 旁白(需 pyttsx3)",
@@ -846,6 +865,7 @@ class GPUVizWidget(QWidget):
         action_row.addWidget(self._theme_button)
         action_row.addWidget(self._profiler_button)
         action_row.addWidget(self._cinema_button)
+        action_row.addWidget(self._tutorial_button)
         action_row.addWidget(self._tts_button)
         action_row.addWidget(self._tour_button)
         action_row.addWidget(self._record_button)
@@ -2058,10 +2078,21 @@ class GPUVizWidget(QWidget):
 
     # ---- Cinema mode ------------------------------------------------
     def _start_cinema_mode(self) -> None:
+        """跑 60 秒快速 showcase 劇本(適合錄展示影片)。"""
+        self._start_scripted_mode(builtin_60_second_script(), name="電影模式")
+
+    def _start_tutorial_mode(self) -> None:
+        """跑 10 分鐘詳細導覽 — 給零程式基礎觀眾用,每個概念都會停留讀字幕。"""
+        from gpu_simulator.cinematic import builtin_10_minute_tutorial_script
+
+        self._start_scripted_mode(
+            builtin_10_minute_tutorial_script(), name="10 分鐘導覽"
+        )
+
+    def _start_scripted_mode(self, script, name: str = "電影模式") -> None:
         if self._cinema_timer is not None and self._cinema_timer.isActive():
-            self._show_info("電影模式", "已經在播了,等播完或關掉再試。")
+            self._show_info(name, f"已經在播了({name}),等播完或關掉再試。")
             return
-        script = builtin_60_second_script()
         self._cinema_player = CinemaPlayer(script, on_action=self._handle_cinema_action)
         self._cinema_timer = QTimer(self)
         self._cinema_timer.timeout.connect(self._cinema_advance)
@@ -2235,10 +2266,17 @@ class GPUVizWidget(QWidget):
         cmds: list[Command] = [
             Command(
                 id="cinema",
-                title="🎬 電影模式",
-                description="60 秒劇本式自動展示",
+                title="🎬 電影模式(60 秒快速版)",
+                description="60 秒劇本式自動展示,適合錄影",
                 run=self._start_cinema_mode,
-                keywords=("cinema", "demo", "showcase"),
+                keywords=("cinema", "demo", "showcase", "電影"),
+            ),
+            Command(
+                id="tutorial",
+                title="📖 10 分鐘詳細導覽(教學版)",
+                description="零程式基礎也能跟著看,逐個概念講解",
+                run=self._start_tutorial_mode,
+                keywords=("tutorial", "guide", "教學", "導覽"),
             ),
             Command(
                 id="tts",
