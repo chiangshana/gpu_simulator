@@ -146,9 +146,9 @@ def build_mirror_dashboard(
     layout.setSpacing(8)
 
     header = QLabel(
-        "🪞 <b>對照鏡 — 模擬 GPU vs 真實電腦</b>"
-        "  ·  左邊是這個專案模擬出來的 8 個運算單元(SM,GPU 的計算核心),"
-        "右邊是你電腦真實的每一顆 CPU 核心。"
+        "<b>對照鏡 — 模擬 GPU vs 本機 CPU</b>"
+        "  ·  左側為本專案模擬的 8 個 Streaming Multiprocessor(SM),"
+        "右側為本機 CPU 的各邏輯核心使用率。"
     )
     header.setStyleSheet("color: rgba(220,230,240,240); font-size: 11pt;")
     header.setWordWrap(True)
@@ -163,7 +163,7 @@ def build_mirror_dashboard(
         "QFrame { background: rgba(28,22,40,210); border-radius: 8px; padding: 6px; }"
     )
     left_layout = QVBoxLayout(left)
-    left_title = QLabel("🎮 <b>模擬 GPU</b>(這個專題寫程式做出來的)", left)
+    left_title = QLabel("<b>模擬 GPU</b>(本專案實作)", left)
     left_title.setStyleSheet("color: rgba(200,180,250,240); font-size: 11pt;")
     left_layout.addWidget(left_title)
     left_summary = QLabel("(讀取中…)", left)
@@ -184,7 +184,7 @@ def build_mirror_dashboard(
         "QFrame { background: rgba(22,28,40,210); border-radius: 8px; padding: 6px; }"
     )
     right_layout = QVBoxLayout(right)
-    right_title = QLabel("💻 <b>真實 CPU</b>(你這台機器)", right)
+    right_title = QLabel("<b>本機 CPU</b>(由 psutil 即時取樣)", right)
     right_title.setStyleSheet("color: rgba(180,230,250,240); font-size: 11pt;")
     right_layout.addWidget(right_title)
     right_summary = QLabel("(讀取中…)", right)
@@ -221,7 +221,9 @@ def build_mirror_dashboard(
 
     # 按鈕列
     button_row = QHBoxLayout()
-    trigger_btn = QPushButton("▶️ 派工作給模擬 GPU(看左邊跳起來,右邊真實 CPU 不會動)", box)
+    trigger_btn = QPushButton(
+        "▶️ 派發 kernel 給模擬 GPU(觀察左側 SM 使用率上升,右側本機 CPU 不變)", box
+    )
     trigger_btn.setStyleSheet(
         "QPushButton { background: rgba(80,100,180,220); color: white; "
         "border-radius: 6px; padding: 6px 14px; font-size: 10pt; } "
@@ -304,7 +306,7 @@ def build_mirror_dashboard(
         diff = divergence_score(snap)
         divergence_label.setText(
             f"差距分數:{diff:.0f} / 100  "
-            f"(0 = 兩邊一樣忙;按上面那顆藍色按鈕就會看到差距瞬間飆高)"
+            f"(0 表示兩端負載一致;按下「派工作給模擬 GPU」按鈕後差距會立即上升)"
         )
 
     timer = QTimer(box)

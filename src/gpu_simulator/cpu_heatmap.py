@@ -209,9 +209,9 @@ def build_heatmap_tab(parent=None):
     outer.setContentsMargins(8, 8, 8, 8)
 
     header = QLabel(
-        "🧪 <b>CPU 狀態變化色塊圖</b> — 跑一段程式指令(組合語言 ASM),"
-        "看 CPU 內部 8 個小燈(狀態旗標 SREG)、32 個小格子(暫存器 R0–R31)、"
-        "記憶體 0x60–0x7F,每一拍(cycle)怎麼變化"
+        "<b>CPU 狀態變化色塊圖</b> — 執行一段組合語言(ASM),"
+        "以三層 heatmap 視覺化 SREG 狀態旗標(8 bit)、R0–R31 通用暫存器、"
+        "記憶體 0x60–0x7F 隨每個 cycle 的變化"
     )
     header.setStyleSheet("color: rgba(220,230,240,240); font-size: 11pt;")
     header.setWordWrap(True)
@@ -224,7 +224,7 @@ def build_heatmap_tab(parent=None):
     left = QWidget(splitter)
     left_layout = QVBoxLayout(left)
     left_layout.setContentsMargins(4, 4, 4, 4)
-    left_layout.addWidget(QLabel("程式指令(組合語言 ASM):"))
+    left_layout.addWidget(QLabel("Tiny8 組合語言(ASM)源碼:"))
     editor = QPlainTextEdit(left)
     editor.setPlainText(_DEFAULT_DEMO_ASM)
     editor.setStyleSheet(
@@ -236,8 +236,8 @@ def build_heatmap_tab(parent=None):
     max_steps_box = QSpinBox(left)
     max_steps_box.setRange(10, 5000)
     max_steps_box.setValue(200)
-    max_steps_box.setPrefix("最多跑幾拍:")
-    run_btn = QPushButton("▶️ 開跑並畫圖", left)
+    max_steps_box.setPrefix("最多執行 cycle 數:")
+    run_btn = QPushButton("▶️ 執行並繪製", left)
     run_row.addWidget(max_steps_box)
     run_row.addWidget(run_btn, 1)
     left_layout.addLayout(run_row)
@@ -248,7 +248,7 @@ def build_heatmap_tab(parent=None):
     right_layout = QVBoxLayout(right)
     right_layout.setContentsMargins(4, 4, 4, 4)
 
-    status_lbl = QLabel("還沒開始。請按左下「▶️ 開跑並畫圖」按鈕。", right)
+    status_lbl = QLabel("尚未執行。請按左下「▶️ 執行並繪製」按鈕開始。", right)
     status_lbl.setStyleSheet("color: rgba(240,220,140,240); font-size: 10pt;")
     right_layout.addWidget(status_lbl)
 
@@ -256,7 +256,7 @@ def build_heatmap_tab(parent=None):
     right_layout.addLayout(canvas_holder, 1)
 
     slider_row = QHBoxLayout()
-    slider_lbl = QLabel("第幾拍:", right)
+    slider_lbl = QLabel("Cycle:", right)
     slider = QSlider(Qt.Horizontal, right)
     slider.setMinimum(1)
     slider.setMaximum(1)
@@ -264,7 +264,7 @@ def build_heatmap_tab(parent=None):
     slider_row.addWidget(slider, 1)
     right_layout.addLayout(slider_row)
 
-    detail_lbl = QLabel("(按上面執行後,拖下方拉桿可以看任一拍的精確數值)", right)
+    detail_lbl = QLabel("(執行後拖動下方拉桿可定位到任一 cycle 並查看該 cycle 的精確狀態)", right)
     detail_lbl.setStyleSheet("color: rgba(200,210,225,235); font-size: 10pt;")
     detail_lbl.setWordWrap(True)
     right_layout.addWidget(detail_lbl)
@@ -386,10 +386,10 @@ def build_heatmap_tab(parent=None):
         try:
             history = record_run(source, max_steps=max_steps)
         except Exception as exc:
-            status_lbl.setText(f"❌ 跑失敗(程式有錯):{exc}")
+            status_lbl.setText(f"執行失敗(ASM 語法或執行時錯誤):{exc}")
             return
         status_lbl.setText(
-            f"✅ 跑完 {history.total_steps} 拍 — 拖下方拉桿看任一拍的詳細狀態"
+            f"執行完成,共 {history.total_steps} 個 cycle — 拖下方拉桿可檢視任一 cycle 的詳細狀態"
         )
         render_history(history)
 

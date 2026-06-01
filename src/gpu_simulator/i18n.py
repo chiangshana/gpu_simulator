@@ -23,12 +23,12 @@ from __future__ import annotations
 # ---------------------------------------------------------------------------
 STRINGS: dict[str, str] = {
     # ----------- 視窗、總體 -----------
-    "app.title": "GPU 模擬器 · 桌面虛擬顯卡視覺化工具",
-    "app.subtitle": "用白話教你看懂 CPU(電腦大腦)跟 GPU(顯示卡)在做什麼",
+    "app.title": "GPU 模擬器 — CPU↔GPU 視覺化教學工具",
+    "app.subtitle": "互動式呈現 CPU 與 GPU 的執行狀態與互動",
     "mode.live": "● 即時模式",
     "mode.replay": "● 重看舊紀錄 #{session_id}",
-    "mode.asm": "● 寫程式模式",
-    "mode.easy": "● 給爸媽看模式",
+    "mode.asm": "● ASM 執行模式",
+    "mode.easy": "● 精簡介面模式",
 
     # ----------- 分頁名稱(精簡 emoji + 1-3 字)-----------
     "tab.live": "⚡ 即時",
@@ -43,35 +43,35 @@ STRINGS: dict[str, str] = {
     # ----------- 各分頁標題提示 -----------
     "section.live.title": "GPU 即時狀態",
     "section.live.tip": (
-        "你每動一下滑鼠 / 鍵盤,GPU 就會收到一個要算的工作。"
-        "看下面 8 顆運算單元(SM)跟 GPU 記憶體(VRAM)怎麼反應吧!"
+        "滑鼠 / 鍵盤事件會觸發對應的 GPU kernel。觀察下方 8 個 Streaming "
+        "Multiprocessor(SM)與 VRAM 的反應。"
     ),
-    "section.sm_grid": "GPU 運算單元(SM,共 8 顆)的忙碌程度",
-    "section.vram": "GPU 記憶體(VRAM)用了多少",
-    "section.pipeline": "流水線(pipeline)五階段 — 每個平行小組跑到哪了",
-    "section.event_log": "事件紀錄 — 剛剛發生什麼事",
-    "section.analytics.title": "忙碌程度與 GPU 記憶體用量隨時間變化",
+    "section.sm_grid": "Streaming Multiprocessor(SM,共 8 個)使用率",
+    "section.vram": "VRAM 使用量",
+    "section.pipeline": "5 階 pipeline 各 warp 所處階段",
+    "section.event_log": "事件紀錄(event log)",
+    "section.analytics.title": "GPU 使用率與 VRAM 用量隨時間變化",
     "section.analytics.tip": (
-        "橘色線 = GPU 多忙(百分比)、藍色線 = GPU 記憶體用了多少(MiB)"
+        "橘線:整體 GPU 使用率(百分比);藍線:VRAM 使用量(MiB)"
     ),
-    "section.history.title": "過去的執行紀錄(可重看 / 匯出)",
+    "section.history.title": "歷史執行紀錄(可重播 / 匯出)",
     "section.history.tip": (
-        "選一筆過去的紀錄,可以重看,或匯出成表格(CSV)、報告(Markdown)、圖片(PNG)"
+        "選擇歷史紀錄可重播,或匯出為 CSV / Markdown / PNG 格式"
     ),
-    "section.trace.title": "逐拍追蹤 — CPU 每一拍(cycle)做了什麼",
-    "section.trace.tip": "每一橫列是一拍(cycle),有變動的格子會亮起來",
+    "section.trace.title": "逐 cycle 執行紀錄",
+    "section.trace.tip": "每一橫列代表一個 cycle,有變動的欄位高亮顯示",
     "section.debug.title": "CPU 內部狀態觀察",
     "section.debug.tip": (
-        "黑底是為了像專業除錯器(debugger)一樣;格子變黃色代表這一拍剛改變"
+        "monospace 字型呈現,變動格高亮為黃色"
     ),
-    "section.heatmap.title": "時間 × CPU 內部 熱力圖",
+    "section.heatmap.title": "時間 × CPU 內部狀態 熱圖",
     "section.heatmap.tip": (
-        "從上到下:狀態旗標(SREG 8 個小燈)/ 32 個小格子(暫存器 R0–R31)"
-        " / 記憶體 0x60–0x7F,顏色越亮代表值越大"
+        "由上至下:SREG 狀態旗標(8 bit)、R0–R31 通用暫存器、"
+        "記憶體 0x60–0x7F。顏色強度對應數值大小。"
     ),
-    "section.input.title": "程式指令編輯區(組合語言 ASM)",
-    "section.input.tip": "可以從上方挑現成範例,或自己寫一段組合語言(ASM)",
-    "section.real_gpu": "你電腦真實的 GPU(只有 NVIDIA 顯卡才有資料)",
+    "section.input.title": "Tiny8 組合語言(ASM)編輯區",
+    "section.input.tip": "可從上方選擇內建範例,或自行撰寫 Tiny8 子集組合語言",
+    "section.real_gpu": "本機真實顯卡讀值(僅 NVIDIA 顯卡)",
 
     # ----------- 按鈕 -----------
     "btn.run": "▶ 執行",
@@ -92,32 +92,31 @@ STRINGS: dict[str, str] = {
 
     # ----------- 按鈕 tooltip -----------
     "tooltip.run": (
-        "把下方的程式指令(組合語言 ASM)讀進來開始跑,"
-        "「逐拍」「內部」「演化」三個分頁都會跟著動"
+        "組譯並執行下方 ASM,「逐拍」「內部」「演化」三個分頁會即時同步更新"
     ),
-    "tooltip.step": "只走一拍(cycle),慢慢看每一行指令做了什麼",
-    "tooltip.reset": "停下執行、清空紀錄,回到原本的即時模式",
-    "tooltip.load_example": "載入內建範例程式到下方編輯器",
-    "tooltip.record_start": "把畫面錄成 GIF 動圖,存在 ~/.gpu_simulator/recordings/",
+    "tooltip.step": "單步執行一個 cycle,逐一觀察指令效果",
+    "tooltip.reset": "停止執行並清空紀錄,回到即時模式",
+    "tooltip.load_example": "載入內建範例程式至下方編輯器",
+    "tooltip.record_start": "將視窗畫面錄製為 GIF,輸出至 ~/.gpu_simulator/recordings/",
     "tooltip.record_stop": "停止錄影並儲存 GIF",
-    "tooltip.trophy_room": "看你已經解鎖的成就徽章",
-    "tooltip.start_quiz": "5 題選擇題小測驗,看你剛剛跑的程式記了多少",
-    "tooltip.start_tour": "重看一遍新手導覽",
-    "tooltip.close": "關閉小工具,並把這次紀錄存進歷史",
+    "tooltip.trophy_room": "查看已解鎖的成就徽章",
+    "tooltip.start_quiz": "5 題選擇題,基於剛執行的 ASM 內容出題",
+    "tooltip.start_tour": "重新顯示新手導覽",
+    "tooltip.close": "關閉視窗,自動將本次 session 寫入歷史紀錄",
 
     # ----------- 狀態列訊息 -----------
-    "status.ready": "已就緒,點「執行」開始。",
-    "status.running": "執行中,共 {count} 行指令…按「重置」可中止。",
-    "status.halted": "走了 {cycles} 拍(cycle)後停下來。",
-    "status.max_cycles": "達到最大拍數({limit}),已自動停下來。",
-    "status.cycle_one": "第 {cycle} 拍 · {instruction}",
+    "status.ready": "已就緒,按「執行」開始。",
+    "status.running": "執行中,共 {count} 行指令(按「重置」可中止)。",
+    "status.halted": "已執行 {cycles} 個 cycle 後停止。",
+    "status.max_cycles": "達到最大 cycle 數上限({limit}),自動停止。",
+    "status.cycle_one": "Cycle {cycle} · {instruction}",
     "status.reset": "已重置,回到即時模式。",
     "status.example_loaded": "已載入範例:{name}",
-    "status.recording": "🔴 錄影中… 已 {seconds} 秒",
-    "status.recording_saved": "GIF 已儲存到 {path}",
-    "status.kwait_indicator": "等待中 · CPU 在等 GPU 完成(KWAIT)",
-    "status.running_indicator": "執行中 · CPU 正在跑",
-    "status.halted_indicator": "已停止 · CPU 不跑了",
+    "status.recording": "錄影中,已 {seconds} 秒",
+    "status.recording_saved": "GIF 已儲存至 {path}",
+    "status.kwait_indicator": "等待中 · CPU stall 等待 GPU(KWAIT)",
+    "status.running_indicator": "執行中 · CPU 正常推進",
+    "status.halted_indicator": "已停止 · CPU 已 HALT",
 
     # ----------- kernel 中文別名(會在 event log 顯示) -----------
     "kernel.vector_add": "向量加法",
@@ -138,30 +137,29 @@ STRINGS: dict[str, str] = {
     "trigger.idle": "使用者閒置",
     "trigger.asm": "程式指令",
 
-    # ----------- GPU 寵物表情語 -----------
-    "pet.bored": "好閒喔…來點工作給我嘛 😴",
-    "pet.warming": "嗯?有事要做了 🤔",
-    "pet.busy": "正在認真幹活!💪",
-    "pet.sweating": "我快忙不過來了 😅",
-    "pet.melting": "我要燒起來啦!🔥",
+    # ----------- GPU 寵物表情語(維持較輕鬆的口吻,因為這是寵物 UI) -----------
+    "pet.bored": "待機中,GPU 閒置",
+    "pet.warming": "開始接到工作",
+    "pet.busy": "執行中",
+    "pet.sweating": "高負載運轉中",
+    "pet.melting": "接近滿載",
 
     # ----------- 歡迎對話 -----------
-    "welcome.title": "歡迎使用 GPU 模擬器!",
+    "welcome.title": "歡迎使用 GPU 模擬器",
     "welcome.intro": (
-        "這是一個會在桌面跑的虛擬顯卡模擬器。\n"
-        "它會把你的滑鼠、鍵盤、開啟 App 等動作,即時翻譯成 GPU 要算的工作。\n"
-        "下面 30 秒帶你看懂幾個重要分頁:"
+        "本工具是一個桌面 CPU↔GPU 視覺化教學模擬器。\n"
+        "滑鼠、鍵盤、開啟 App 等事件會被翻譯成 GPU kernel,即時呈現於各分頁。\n"
+        "以下是重點分頁說明:"
     ),
-    "welcome.step1": "⚡ 即時 — 動一下滑鼠,看下面 8 顆運算單元(SM)亮起來",
-    "welcome.step2": "📈 趨勢 — 看 GPU 多忙、用了多少記憶體,隨時間怎麼變動",
-    "welcome.step3": "📚 歷史 — 過去的執行紀錄都在這,可以重看或匯出",
-    "welcome.step4": "🐞 內部 / 🌡️ 演化 — 看 CPU 內部的小格子(暫存器)與記憶體",
-    "welcome.step5": "⌨️ 寫程式 — 寫一段程式指令(組合語言 ASM),看 CPU 跟 GPU 怎麼合作",
+    "welcome.step1": "⚡ 即時 — 滑鼠/鍵盤事件觸發 kernel,觀察 8 個 SM 的反應",
+    "welcome.step2": "📈 趨勢 — GPU 使用率與 VRAM 用量隨時間的變化曲線",
+    "welcome.step3": "📚 歷史 — 過去 session 的紀錄,可重播或匯出",
+    "welcome.step4": "🐞 內部 / 🌡️ 演化 — 觀察 CPU 暫存器與記憶體的內部狀態",
+    "welcome.step5": "⌨️ 寫程式 — 撰寫 Tiny8 組合語言(ASM),觀察 CPU 與 GPU 的協同運作",
     "welcome.cta": (
-        "點下方按鈕開始體驗。不知道從哪開始的話,先到「寫程式」分頁"
-        "按「📚 載入範例」!"
+        "按下方按鈕開始。建議先到「寫程式」分頁按「載入範例」執行內建程式。"
     ),
-    "welcome.start": "好,開始!",
+    "welcome.start": "開始",
     "welcome.dont_show": "下次不要再顯示",
 
     # ----------- 成就 -----------
@@ -203,35 +201,34 @@ STRINGS: dict[str, str] = {
     "quiz.no_session": "請先到「寫程式」分頁跑一段程式,再來測驗喔!",
 
     # ----------- 範例庫卡片 -----------
-    "preset.hello.name": "你好 GPU",
-    "preset.hello.desc": "最簡單的開門菜:CPU 派一個「向量加法」工作給 GPU,然後等它做完",
+    "preset.hello.name": "Hello GPU",
+    "preset.hello.desc": "最基本範例:CPU 派發一個 vector_add kernel 至 GPU,等待完成",
     "preset.hello.stars": "★☆☆☆☆",
     "preset.burst.name": "連發三顆",
-    "preset.burst.desc": "一口氣把「向量加法」「雜湊」「紋理載入」三種工作丟給 GPU",
+    "preset.burst.desc": "連續派發 vector_add、hash、texture_load 三種 kernel 至 GPU",
     "preset.burst.stars": "★★☆☆☆",
-    "preset.loop.name": "迴圈發射",
-    "preset.loop.desc": "用迴圈連續派 3 次「線性插值」工作給 GPU,順便展示條件跳轉的寫法",
+    "preset.loop.name": "迴圈派發",
+    "preset.loop.desc": "以迴圈連續派發 3 次 interpolation kernel,展示條件跳轉指令",
     "preset.loop.stars": "★★☆☆☆",
     "preset.memory_copy.name": "記憶體拷貝",
     "preset.memory_copy.desc": (
-        "把記憶體 0x60..0x65 內容複製到 0x70..0x75,最後派一個「向量加法」工作給 GPU。"
-        "熱力圖會超漂亮!"
+        "將 0x60..0x65 區段複製至 0x70..0x75,最後派發一個 vector_add kernel"
     ),
     "preset.memory_copy.stars": "★★★☆☆",
     "preset.sort_three.name": "三數排序",
     "preset.sort_three.desc": (
-        "用比較跟條件跳轉,把三個小格子(R16/R17/R18)裡的數字由小到大排好"
+        "以比較與條件跳轉指令,將 R16 / R17 / R18 三個暫存器值由小到大排序"
     ),
     "preset.sort_three.stars": "★★★☆☆",
-    "preset.find_max.name": "找最大值",
-    "preset.find_max.desc": "掃過記憶體 0x60..0x67 共 8 個位置,找出最大值放到 R0 格子",
+    "preset.find_max.name": "尋找最大值",
+    "preset.find_max.desc": "掃描記憶體 0x60..0x67 共 8 個位置,將最大值存入 R0",
     "preset.find_max.stars": "★★★☆☆",
-    "preset.counter.name": "倒數計時器",
-    "preset.counter.desc": "從 9 倒數到 0,每數一個就派一個「雜湊」工作給 GPU",
+    "preset.counter.name": "倒數計時",
+    "preset.counter.desc": "從 9 倒數至 0,每次迭代派發一個 hash kernel",
     "preset.counter.stars": "★★☆☆☆",
     "preset.mixed_burst.name": "混合工作負載",
     "preset.mixed_burst.desc": (
-        "依序派出全部 7 種工作給 GPU,熱力圖上會看到運算單元(SM)忙碌程度波動"
+        "依序派發全部 7 種 kernel,熱圖會呈現各 SM 使用率的波動"
     ),
     "preset.mixed_burst.stars": "★★★★☆",
 

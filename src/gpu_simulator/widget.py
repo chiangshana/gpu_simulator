@@ -659,85 +659,89 @@ class GPUVizWidget(QWidget):
                 idx = self._tabs.addTab(widget, short_label)
                 self._tabs.setTabToolTip(idx, tooltip)
 
-            # 三大支柱優先 — 全部使用「白話 + 括號標技術詞」風格
+            # 14 個分頁 tooltip 採用「白話 + 括號標技術詞」風格
             add_tab(
                 mirror_tab,
                 "🪞 對照",
-                "🪞 對照鏡 — 左邊我模擬的 GPU 8 個運算單元(SM)、"
-                "右邊你電腦真實的 CPU 核心,並排比較",
+                "對照鏡 — 模擬 GPU 8 個運算單元(SM)與本機 CPU 各邏輯核心並排顯示,"
+                "用於即時對比兩端負載",
             )
             add_tab(
                 cpu_state_heatmap_tab,
                 "🌡️ 變化",
-                "🌡️ 狀態變化圖 — 跑一段程式,看 CPU 內部小格子(暫存器)跟"
-                "記憶體每一拍(cycle)的變化色塊圖",
+                "狀態變化圖 — 執行一段 Tiny8 ASM,以三層 matplotlib heatmap 呈現 "
+                "SREG 狀態旗標、R0–R31 通用暫存器、記憶體 0x60–0x7F 隨 cycle 的演化",
             )
             add_tab(
                 real_hw_tab,
                 "💻 硬體",
-                "💻 真實硬體 — 你電腦每顆 CPU 核心的忙碌程度 + 真實 GPU 狀態",
+                "本機硬體儀表板 — 各顆 CPU 邏輯核心即時使用率,以及 NVIDIA 顯卡的"
+                "使用率、記憶體、溫度、功耗(若有)",
             )
-            # 支柱 ① 延伸
+            # 模擬層其他分頁
             add_tab(
                 live_tab,
                 "⚡ 即時",
-                "⚡ 即時模擬 — 動滑鼠鍵盤會觸發 GPU 工作,"
-                "看下面 8 顆運算單元(SM)、GPU 記憶體(VRAM)、流水線(pipeline)反應",
+                "即時模擬 — 滑鼠/鍵盤事件觸發對應 kernel,顯示 8 個 SM、VRAM、"
+                "5 階 pipeline 的即時反應",
             )
             add_tab(
                 cinema_tab,
                 "🎬 Cinema",
-                "🎬 慢動作劇場 — CPU 跟 GPU 並排播放,每一拍都看得到誰在做什麼",
+                "慢動作劇場 — CPU 與 GPU 並排播放,可拖時間軸前後檢視任一 cycle 的協同狀態",
             )
             add_tab(
                 full_tab,
                 "🧬 完整 CPU",
-                "🧬 Tiny8 完整版 — 內嵌真正的 Tiny8 CPU,支援 60+ 條指令",
+                "Tiny8 完整 ISA — 內嵌完整 Tiny8 處理器,支援 60 餘條指令"
+                "(ADD、MUL、CALL、RJMP 等)",
             )
             add_tab(
                 input_tab,
                 "⌨️ 寫程式",
-                "⌨️ 程式編輯器 — 在這裡寫組合語言(ASM)指令,按執行就會跑",
+                "程式編輯器 — 撰寫 Tiny8 子集組合語言(ASM),內建多支範例可一鍵載入",
             )
-            # 細部除錯 / 視覺化
+            # 除錯與視覺化
             add_tab(
                 trace_tab,
                 "📜 逐拍",
-                "📜 逐拍紀錄表 — 每一拍(cycle)一列,有變動的格子會亮起來;"
-                "點任一列可以時光旅行到那一拍",
+                "逐拍紀錄表 — 每個 cycle 一列,變動欄位高亮;"
+                "點任一列可回溯該 cycle 的完整狀態",
             )
             add_tab(
                 debug_tab,
                 "🐞 內部",
-                "🐞 CPU 內部觀察 — 32 個小格子(暫存器)+ 記憶體格子,黃色 = 剛變動",
+                "CPU 內部觀察 — 32 個通用暫存器(R0–R31)與記憶體區段即時顯示,"
+                "變動格高亮",
             )
             add_tab(
                 heatmap_tab,
                 "📊 演化",
-                "📊 暫存器/記憶體 隨時間演化色塊圖",
+                "暫存器/記憶體值隨 cycle 演化的色塊圖",
             )
             add_tab(
                 sequence_tab,
                 "🔁 對話",
-                "🔁 時序對話圖 — CPU 跟 GPU 兩條時間線,看誰先說什麼、誰回什麼",
+                "CPU↔GPU 互動時序圖 — UML 風格雙泳道,呈現 KLAUNCH 派發與"
+                "kernel 完成事件",
             )
             add_tab(
                 memory_map_tab,
                 "🗺️ 記憶",
-                "🗺️ 記憶體地圖 — 256 個格子全攤開,"
-                "標出哪幾格是給 GPU 看的「電鈴位置」",
+                "256 byte 完整記憶體地圖,標示 0x40 / 0x41 / 0xFF 三個 I/O 控制位址",
             )
             add_tab(
                 gpu_3d_tab,
                 "🏗️ 3D",
-                "🏗️ 3D 立體 GPU 視圖 — 8 顆運算單元(SM)畫成等距高塔,越高代表越忙",
+                "3D 等距投影視圖 — 8 個 SM 呈現為立體高塔,塔高反映各 SM 的使用率",
             )
             # 進階主題(最後一個,後面三個 [遊戲 / 趨勢 / 歷史]
             # 在第 22 輪砍掉以精簡介面 — 程式碼還在,以後想恢復把它們加回 add_tab 即可)
             add_tab(
                 divergence_tab,
                 "🧠 進階",
-                "🧠 進階 GPU 概念 — 平行小組(warp)分歧、記憶體合併存取",
+                "進階 GPU 概念 — warp 執行分歧(branch divergence)與記憶體合併存取"
+                "(memory coalescing)的視覺化",
             )
             # 已砍:🎮 遊戲(Conway's Life)/ 📈 趨勢(Analytics)/ 📚 歷史(Session history)
             # 對應的 widget instance 仍在記憶體中以避免影響其他模組,
